@@ -6,6 +6,7 @@ TIER_WEIGHTS = np.asarray([12.0, 4.0, 1.0, 0.2], dtype=np.float64)
 
 
 def interpolate_saliency(timeline: dict, frame: int) -> np.ndarray:
+    # Interpolate the saved scores to this animation step.
     anchors = np.asarray(timeline['frames'], dtype=np.float64)
     scores = np.asarray(timeline['scores'], dtype=np.float64)
     n = int(timeline['tiles'])
@@ -17,6 +18,7 @@ def interpolate_saliency(timeline: dict, frame: int) -> np.ndarray:
 
 
 def priority_tiers(sal: np.ndarray, centroids: np.ndarray) -> np.ndarray:
+    # Assign salient spatial groups to earlier delivery tiers.
     """Exactly the previously established P0/P1/nearby P2/P3 tile rule."""
     n = len(sal)
     if n < 8 or centroids.shape != (n, 3):
