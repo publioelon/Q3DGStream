@@ -1,45 +1,67 @@
 # Reproducing the experiments
 
-The `research/` tree contains the original experimental scripts and setup notes. Large NTC checkpoints, Gaussian scenes, Gaussian states, SalFoM prediction maps, priority stage outputs and full evaluation traces are **external inputs** rather than files checked into Git.
+The scripts under `research/` use the Flame Steak sequence and a saved INT4 keep05 PQAT run. The scene geometry, NTC checkpoints, saved Gaussian states, SalFoM predictions, and generated stage files are external inputs, not part of the Git repository.
 
-## 1. Priority generation
+CUDA inference uses PyTorch and tiny-cuda-nn. Start with [Ubuntu installation](linux.md) and [GPU validation](GPU_VALIDATION.md) if the machine has not been prepared.
+
+## Priority generation
+
+`research/priority/dynamic_299/` contains the SalFoM timeline preparation, per-frame sensitivity measurements, and stage writer.
 
 ```bash
 cd research/priority/dynamic_299
 python3 test_offline.py
-# Requires generated scene data and tiny-cuda-nn for ranking:
 bash run_pilot.sh
 bash run_small_sequence.sh
 bash run_all.sh
 ```
 
-The generator combines measured/interpolated 12-camera SalFoM outputs with per-NTC gradient-based block sensitivity. Four `.qblk` stages are saved for each compressed checkpoint.
+The pilot ranks NTC 114 first. The full run extends the procedure to all 299 NTCs and emits four `.qblk` files per frame. It uses 36 saved multiview saliency anchors with interpolation between them, rather than independent SalFoM inference at every animation frame.
 
-## 2. Stage integrity
+The full run carries out per-frame gradient measurements and is substantially more expensive than the format tests. Its scripts support continuing from already generated outputs.
+
+## Verify the transmitted records
+
+From the repository root, check an individual stage:
 
 ```bash
-python3 q3dgstream.py inspect-stage /path/to/NTC_000114_P0.qblk
-python3 research/evaluation/qntc_299_priority_eval.py --verify-only
+python3 q3dgstream.py inspect-stage \
+  "$HOME/snap/firefox/common/QNTC_dynamic_299_priorities_v1/stages/NTC_000114_P0.qblk"
 ```
 
-The second command expects the original PQAT checkpoint and stage directories. It confirms the correspondence of indices, scales and packed INT4 weights for each frame.
-
-## 3. Reconstruction accuracy
+To compare all 299 stage sets against the compressed wire checkpoints:
 
 ```bash
 python3 research/evaluation/qntc_299_priority_eval.py \
-  --start 113 --end 115 --seeds 5 --batch 8192
-
-python3 research/evaluation/qntc_299_priority_eval.py \
-  --start 0 --end 298 --seeds 5 --batch 8192
+  --verify-only --out /tmp/q3dgstream_wire_verification
 ```
 
-These measurements compare per-frame partial NTC inference with the **complete compressed NTC** for each saved input Gaussian state. They do not accumulate partial transforms across frames. The `rotation_v2` evaluator additionally checks the zero-quaternion behavior using an explicit fallback convention; ensure your viewer matches that convention before drawing conclusions about playback rotation.
+The verification checks original block indices, FP32 scales, and packed INT4 bytes, rather than comparing only the decoded tensor's approximate values.
 
-## 4. Inspect the sample results
+## Evaluate progressive reconstruction
 
-`research/results/` contains a small three-frame example and the 299-stage integrity report. The full 299-frame quality CSV is stored separately to avoid coupling a code checkout to research outputs.
+A short GPU run over three consecutive NTCs:
 
-## Results protocols
+```bash
+python3 research/evaluation/qntc_299_priority_eval.py \
+  --start 113 --end 115 --seeds 5 --batch 8192 \
+  --out /tmp/q3dgstream_eval_113_115
+```
 
-The previously validated FP32 reference of **33.938 dB, SSIM 0.9591, LPIPS 0.0776** was measured with an older **50-frame** protocol. The separate later lowbit299 experiment evaluated 299 updates under a different renderer protocol. Do not compare absolute image-quality metrics between these protocols as if they shared an identical baseline. Details are in [Results](RESULTS.md).
+For the complete sequence:
+
+```bash
+python3 research/evaluation/qntc_299_priority_eval.py \
+  --start 0 --end 298 --seeds 5 --batch 8192 \
+  --out /tmp/q3dgstream_eval_299
+```
+
+The evaluator computes the NTC transformation for saved Gaussian input states. Saliency-prioritized block reception is compared with five randomized orders. Each frame's partial NTC is compared against the **full compressed NTC for that same frame**.
+
+For rotation analysis, use `research/evaluation/qntc_299_priority_eval_rotation_v2.py`, which makes the zero-length quaternion fallback explicit. Viewport and rendered-image evaluation require a separately controlled rendering protocol.
+
+## Saved results
+
+`research/results/wire_stage_verification.json` records the 299-stage integrity check. `research/results/metrics_113_115.csv` contains the small reconstruction sample. The full experiment's large datasets and output traces are not distributed through Git.
+
+The [Results](RESULTS.md) page summarizes completed measurements and distinguishes the older 50-frame image-quality evaluation from the later 299-update protocol.
