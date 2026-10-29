@@ -1,55 +1,58 @@
-# GPU validation and QUIC integration (Ubuntu)
+# GPU validation
 
-The repository's CPU/source tests already run on GitHub Actions. **Real CUDA and QUIC playback must be validated on an NVIDIA GPU.**
+The GitHub tests cover parsing, serialization, and source-level checks. Actual NTC inference and progressive rendering require an NVIDIA GPU with the CUDA dependencies installed.
 
-## Existing research machine: preserve the working viewer
+The instructions below use an existing Ubuntu installation of the original viewer to bring its locally tested QUIC modules into a **separate Q3DGStream checkout**. The source installation is read-only throughout this procedure.
 
-The current GitHub viewer starts from the earlier TCP baseline. Your locally tested QUIC extensions are in a separate checkout. To avoid overwriting any working code, clone Q3DGStream into a new directory and copy **only a reviewed allowlist** of source files. The process never modifies the original installation.
+## Prepare the Q3DGStream checkout
 
 ```bash
 cd ~
-git clone https://github.com/publioelon/Q3DGStream.git Q3DGStream
+git clone https://github.com/publioelon/Q3DGStream.git
+cd Q3DGStream
 source ~/venvs/qntcstream/bin/activate
-cd ~/Q3DGStream
+
 python3 q3dgstream.py test
 python3 q3dgstream.py doctor
 ```
 
-If `~/Q3DGStream` already exists and is a Git checkout, use `git -C ~/Q3DGStream pull --ff-only` instead of cloning again.
+If `~/Q3DGStream` already exists, update it with `git -C ~/Q3DGStream pull --ff-only` rather than cloning again. Reuse a working `qntcstream` environment; rebuilding CUDA extensions is unnecessary for these tests.
 
-### Step 1. Preview local GPU/QUIC source synchronization
+## Bring in the locally tested QUIC receiver
+
+First preview the source files:
 
 ```bash
 cd ~/Q3DGStream
 python scripts/sync_gpu_viewer.py --source ~/3DGS-QuaNTiC-Demo
 ```
 
-The script reports the six required GPU/QUIC source files and optional sender/camera settings. It only **previews** differences. No model weights, private keys, scene assets or experimental caches are copied.
+The source path above is an example from the reference Ubuntu setup. Use `--source /path/to/working/viewer` on another machine. The tool checks required QUIC receiver modules and reports the files it would add or replace without writing anything.
 
-If the preview reports missing `live_quic.py`, `quic_transport.py`, `qntc_progressive_live.py`, QUIC hooks in `main.py`, or priority hooks in `renderer_cuda.py`, **stop and inspect the local checkout**. Do not replace a working file with a guessed version.
-
-### Step 2. Copy only the validated source into Q3DGStream
-
-When the preview is correct:
+After confirming that the preview identifies the expected source:
 
 ```bash
-python scripts/sync_gpu_viewer.py --source ~/3DGS-QuaNTiC-Demo --apply
+python scripts/sync_gpu_viewer.py \
+  --source ~/3DGS-QuaNTiC-Demo --apply
+
 git status --short
 git diff --stat
 ```
 
-The source stays unchanged. Older target versions are preserved under `~/Q3DGStream/.local_backups/`, which is excluded from Git. A machine-specific fixed camera file is also excluded.
+The integration script copies a small allowlist of viewer and transport files, leaving the source directory unchanged. Previous destination versions are backed up in `.local_backups/`. Scene models, private keys, experimental states, and TLS certificates are not copied.
 
-Review all source diffs and perform the tests below **before committing or pushing** the integrated files.
+Review the changes before committing them.
 
-### Step 3. Real CUDA NTC inference and stage validation
+## Offline CUDA tests
 
-These tests depend on saved research data that are not distributed with the source code:
+The full validation uses these previously generated inputs:
 
-- `~/qntc_scenes/flame_steak_official`
-- `/data/3dgs_storage/QNTC-Stream-PQAT-Chunks/qoe_eval/lowbit299_v11_20261011T014600_039285Z/cases/int4_keep05/pqat`
-- `~/snap/firefox/common/QNTC_dynamic_299_priorities_v1/stages`
-- `~/snap/firefox/common/QNTC_299_student_states`
+- Flame Steak: `~/qntc_scenes/flame_steak_official/`
+- INT4 keep05 PQAT run: `/data/3dgs_storage/QNTC-Stream-PQAT-Chunks/qoe_eval/lowbit299_v11_20261011T014600_039285Z/cases/int4_keep05/pqat/`
+- Priority stages: `~/snap/firefox/common/QNTC_dynamic_299_priorities_v1/stages/`
+- Saved Gaussian states: `~/snap/firefox/common/QNTC_299_student_states/`
+
+These paths reflect the original experiment. The saved checkpoints and states are not included in the repository.
 
 ```bash
 cd ~/Q3DGStream
@@ -57,28 +60,30 @@ python scripts/gpu_validation.py --all --viewer ~/Q3DGStream \
   2>&1 | tee ~/snap/firefox/common/Q3DGStream_GPU_validation.log
 ```
 
-The output should report **5 PASS, 0 FAIL**, including:
+The script runs five checks:
 
-1. Loading NTC 114 with 1,991,680 parameters into tiny-cuda-nn and inferring real Gaussian positions on CUDA.
-2. Checking all 1,556 unique sparse INT4 blocks from its four `.qblk` stages.
-3. Inspecting the integrated local QUIC receiver hooks.
-4. Byte-for-byte parity of all 299 staged NTCs against compressed wire checkpoints.
-5. Executing saliency versus five random schedules over NTC frames 113 through 115 on CUDA.
+1. Load the INT4 keep05 runtime NTC 114 and evaluate 1,024 active Gaussian positions with tiny-cuda-nn on CUDA.
+2. Verify the 1,556 indexed weight records in NTC 114's four priority files.
+3. Check the integrated QUIC receiver modules.
+4. Compare all 299 stage sets against their compressed wire checkpoints.
+5. Evaluate saliency ordering against five random orders on frames 113 through 115.
 
-Passing this confirms **offline inference and reconstruction**, not end-to-end real-time playback.
+A successful run ends in `RESULT: 5 PASS, 0 FAIL`. This is an **offline CUDA and source-integrity check**; it does not measure rendered frames per second.
 
-### Step 4. Run the 30-update real QUIC pilot
+## Live QUIC test
 
-Open two terminals, each with `source ~/venvs/qntcstream/bin/activate`. The receiver requires `camera_flame_steak.json` and a local TLS certificate/key in `/tmp/qntc_progressive.{crt,key}`. Do not publish these key files.
+The viewer needs a fixed-camera file and a local QUIC certificate/key at `/tmp/qntc_progressive.crt` and `/tmp/qntc_progressive.key`. Keep the private key out of Git.
 
-**Terminal A, receiver**:
+Launch the receiver and sender in different terminals.
+
+**Receiver**
 
 ```bash
 cd ~/Q3DGStream/research/quic/dynamic_priority_adapter
 bash run_receiver.sh
 ```
 
-**Terminal B, sender**:
+**Sender**
 
 ```bash
 cd ~/Q3DGStream/research/quic/dynamic_priority_adapter
@@ -86,22 +91,19 @@ bash preflight.sh
 QNTC_STAGE_DELAY=0 bash run_sender.sh
 ```
 
-Confirm normal Gaussian colors and motion, that 30 additions and 120 priority stages arrive, and that no CUDA errors appear.
+The first test streams 30 animation updates, with 120 stage files and 30 Gaussian additions. Check the rendered colors and motion as well as the terminal logs. The receiver clears only its dedicated cache at `/tmp/qntc_dynamic_priority_cache`.
 
-The receiver clears *only* the dedicated `/tmp/qntc_dynamic_priority_cache`; it does not change the original scene or model.
-
-### Step 5. Full 299-update QUIC sequence
-
-After the 30-update pilot succeeds, close the receiver and sender. Relaunch the receiver and then run:
+For the 299-update sequence, close the sender and receiver, restart the receiver, then run:
 
 ```bash
-cd ~/Q3DGStream/research/quic/dynamic_priority_adapter
 QNTC_END=298 QNTC_STAGE_DELAY=0 bash run_sender.sh
 ```
 
-Check actual committed NTC update rate and playback behavior. Viewer render FPS alone does not establish 30 NTC transformations/s.
+Record actual applied NTC updates per second separately from the viewer's display FPS.
 
-## Logs to preserve
+## Logs
+
+The validation script and live sender/receiver produce:
 
 ```text
 ~/snap/firefox/common/Q3DGStream_GPU_validation.log
@@ -109,4 +111,4 @@ Check actual committed NTC update rate and playback behavior. Viewer render FPS 
 /tmp/qntc_dynamic_priority_sender.log
 ```
 
-GPU performance, progressive rendering quality and adaptive network scheduling require the corresponding hardware and network experiments before being claimed as validated.
+Use those logs to investigate missing stages, receiver errors, or CUDA exceptions before changing the installation. See [QUIC](QUIC.md) for details of the progressive state update.
