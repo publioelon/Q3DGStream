@@ -23,7 +23,6 @@ N_PARAMS = 1_991_680
 HASH_PARAMS = 1_982_464
 BLOCK = 64
 HASH_BLOCKS = HASH_PARAMS // BLOCK
-DEFAULT_BASE =
 # Map parameter access, not the magnitude of Gaussian motion. paths.EXPERIMENT_DIR
 PRIMES = {
     'coherentprime': (1, 2654435761, 805459861),
