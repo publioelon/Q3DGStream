@@ -23,27 +23,28 @@ Running the original pilot
 --------------------------
 
 The source is in:
-    ~/Q3DGStream/research/quic/progressive_pilot_v1
+    research/quic/progressive_pilot_v1
 
 With the viewer stopped, first review the installation changes:
 
-    source ~/venvs/qntcstream/bin/activate
-    cd ~/Q3DGStream/research/quic/progressive_pilot_v1
-    python install_progressive_quic.py --viewer ~/Q3DGStream
+    source scripts/env.sh
+    cd research/quic/progressive_pilot_v1
+    python install_progressive_quic.py --viewer "$Q3DGSTREAM_ROOT"
 
 Only apply the changes if the compatibility checks pass and an earlier
 working viewer has been preserved:
 
-    python install_progressive_quic.py --viewer ~/Q3DGStream --apply
+    python install_progressive_quic.py --viewer "$Q3DGSTREAM_ROOT" --apply
 
 Create a local QUIC certificate if one is not already available:
 
+    mkdir -p "$(dirname "$Q3DGSTREAM_TLS_KEY")"
     openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
       -subj '/CN=localhost' \
-      -keyout /tmp/qntc_progressive.key \
-      -out /tmp/qntc_progressive.crt
+      -keyout "$Q3DGSTREAM_TLS_KEY" \
+      -out "$Q3DGSTREAM_TLS_CERT"
 
-In the first terminal, run the viewer from ~/Q3DGStream with
+In the first terminal, run the viewer from "$Q3DGSTREAM_ROOT" with
 QNTC_PROGRESSIVE_QUIC=1 and the receiver's --quic_listen 5002 options.
 In the second terminal, launch qntc_progressive_send.py with
 --start 0 --end 19 --order saliency --stage-delay 0.65.
