@@ -1,9 +1,4 @@
-# Utilities for loading 3DGStream/QNTC scene data.
-#
-# Offline playback and live TCP playback both rely on this file so that FP32,
-# FP16, INT8, and INT4 NTC checkpoints are interpreted in the same way. The
-# quantized files are unpacked back into model parameters before being loaded
-# into the tiny-cuda-nn NTC model.
+# Load scene updates and decode NTC checkpoints for playback.
 
 import os
 import json
@@ -22,6 +17,7 @@ from util_gau import load_ply
 
 
 def _unpack_signed_int4_to_float(packed, num_values, quantization="offset_signed_int4_packed"):
+    # Restore two signed four-bit weights from each packed byte.
     """
     Unpacks packed signed INT4 values stored as uint8.
 
