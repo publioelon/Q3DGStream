@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reference-fidelity QUIC sender for native 3DGS-QuaNTiC receiver.
+"""FP32 reference sender for the Q3DGStream QUIC receiver.
 
 Transfers ORIGINAL FP32 NTC checkpoint files and matching per-frame Gaussian
 additions unchanged. No quantization, priority blocks, or receiver patches.
@@ -18,8 +18,13 @@ import os
 import ssl
 from pathlib import Path
 
-DEFAULT_SCENE = Path.home() / 'qntc_scenes/flame_steak_official'
-DEFAULT_CACHE = Path('/tmp/qntc_fp32_reference_cache')
+# Shared locations keep experiments independent of the author's machine.
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import q3dg_paths as paths
+
+DEFAULT_SCENE = paths.SCENE_DIR
+DEFAULT_CACHE = paths.CACHE_DIR / 'qntc_fp32_reference_cache'
 
 
 def collect_files(scene: Path, frames: int):
@@ -41,6 +46,7 @@ def collect_files(scene: Path, frames: int):
     return required
 
 
+    # Preserve source checkpoint order when preparing the transfer.
 def send_order(required, frames, prebuffer):
     """Publish config only after at least prebuffer complete NTCs and additions."""
     if not 1 <= prebuffer <= frames:
