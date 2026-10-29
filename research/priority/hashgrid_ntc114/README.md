@@ -7,8 +7,8 @@ The implementation follows the multiresolution HashGrid indexing used by tiny-cu
 ## Run
 
 ```bash
-source ~/venvs/qntcstream/bin/activate
-cd ~/Q3DGStream/research/priority/hashgrid_ntc114
+source scripts/env.sh
+cd research/priority/hashgrid_ntc114
 
 bash run_pilot.sh --verify-only
 bash run_pilot.sh
@@ -18,10 +18,10 @@ For a shorter first test:
 
 ```bash
 bash run_pilot.sh --max-gaussians 4096 \
-  --out "$HOME/snap/firefox/common/QNTC_individual_gaussian_smoke"
+  --out "$Q3DGSTREAM_HASHGRID_DIR/smoke"
 ```
 
-By default, the full map is written to `~/snap/firefox/common/QNTC_individual_gaussian_ntc114/`.
+By default, the full map is written to `$Q3DGSTREAM_HASHGRID_DIR/`.
 
 | Output | Contents |
 | --- | --- |
