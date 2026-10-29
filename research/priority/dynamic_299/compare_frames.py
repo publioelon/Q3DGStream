@@ -2,14 +2,20 @@
 """Inspect whether saved priorities evolve between two NTC updates."""
 import argparse
 from pathlib import Path
+
+# Load project-wide paths instead of machine-specific defaults.
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import q3dg_paths as paths
 import numpy as np
 p=argparse.ArgumentParser()
-p.add_argument('--out',type=Path,default=Path.home()/'snap/firefox/common/QNTC_dynamic_299_priorities_v1')
+p.add_argument('--out',type=Path,default=paths.PRIORITIES_DIR)
 p.add_argument('frame_a',type=int)
 p.add_argument('frame_b',type=int)
 a=p.parse_args()
 
 def load(frame):
+    # Load the saved priority order for one update.
     with np.load(a.out/'orders'/f'NTC_{frame:06d}.npz',allow_pickle=False) as z:
         return z['ordered_block_ids'],z['tile_tiers'],z['tile_saliency']
 x,tx,sx=load(a.frame_a)
