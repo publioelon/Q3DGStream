@@ -44,6 +44,7 @@ def decode_stage(data):
 
 
 def decode_records_into(full, records):
+    # Restore each sparse block at its original parameter offset.
     """Replace only records that have arrived, leaving all missing INT4 blocks zero."""
     if full.shape != (TOTAL, BLOCK) or full.dtype != np.float32:
         raise ValueError('expected (31120,64) float32 array')
