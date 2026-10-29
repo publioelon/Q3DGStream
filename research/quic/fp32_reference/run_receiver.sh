@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 Q3DGSTREAM_ROOT="${Q3DGSTREAM_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
-source "$HOME/venvs/qntcstream/bin/activate"
+source "$Q3DGSTREAM_ROOT/scripts/env.sh"
 VIEWER="${QNTC_VIEWER:-$Q3DGSTREAM_ROOT}"
-CACHE="${QNTC_FP32_CACHE:-/tmp/qntc_fp32_reference_cache}"
+CACHE="${QNTC_FP32_CACHE:-$Q3DGSTREAM_CACHE_DIR/qntc_fp32_reference_cache}"
 # Fail closed: this command uses --quic_clear_cache, which deletes the cache dir.
 [[ "$(basename "$CACHE")" == 'qntc_fp32_reference_cache' ]] || {
   echo '[STOP] For safety, cache must be a dedicated folder named qntc_fp32_reference_cache' >&2
   exit 1
 }
-[[ "$CACHE" != "$VIEWER"/* && "$CACHE" != "$HOME/qntc_scenes/flame_steak_official"/* ]] || {
+[[ "$CACHE" != "$VIEWER"/* && "$CACHE" != "$Q3DGSTREAM_SCENE_DIR"/* ]] || {
   echo '[STOP] Cache cannot be inside the source scene or viewer' >&2
   exit 1
 }
+mkdir -p "$Q3DGSTREAM_CACHE_DIR" "$Q3DGSTREAM_LOG_DIR"
 cd "$VIEWER"
 [[ -f camera_flame_steak.json ]] || { echo '[STOP] missing reference camera JSON' >&2; exit 1; }
 [[ -f renderer_cuda.py ]] || { echo '[STOP] missing renderer' >&2; exit 1; }
@@ -20,8 +21,8 @@ cd "$VIEWER"
 [[ -f renderer_cuda.py.WORKING_BACKUP ]] || cp -a renderer_cuda.py renderer_cuda.py.WORKING_BACKUP
 [[ -f main.py.WORKING_BACKUP ]] || cp -a main.py main.py.WORKING_BACKUP
 # Local-only test certificate. Require it to exist to avoid surprising prompts.
-CERT=/tmp/qntc_progressive.crt
-KEY=/tmp/qntc_progressive.key
+CERT="$Q3DGSTREAM_TLS_CERT"
+KEY="$Q3DGSTREAM_TLS_KEY"
 [[ -s "$CERT" && -s "$KEY" ]] || { echo '[STOP] Missing local QUIC cert/key, see README' >&2; exit 1; }
 echo '[RECEIVER] Native QUIC (NOT progressive sidecar), original FP32 NTCs and additions'
 echo "[RECEIVER] Cache: $CACHE"
@@ -35,4 +36,4 @@ env -u STATE_SYNC_INTERVAL -u QNTC_PROGRESSIVE_QUIC -u QNTC_STATIC_CPU_PROBE \
   --quic_cache "$CACHE" --quic_clear_cache \
   --quic_cert "$CERT" --quic_key "$KEY" \
   --frames 300 --autoplay --video_fps 30 \
-  2>&1 | tee /tmp/qntc_fp32_reference_receiver.log
+  2>&1 | tee "$Q3DGSTREAM_LOG_DIR/fp32_reference_receiver.log"
