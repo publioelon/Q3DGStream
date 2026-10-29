@@ -3,7 +3,6 @@ set -euo pipefail
 Q3DGSTREAM_ROOT="${Q3DGSTREAM_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 source "$Q3DGSTREAM_ROOT/scripts/env.sh"
 cd "$Q3DGSTREAM_ROOT"
-mkdir -p "$Q3DGSTREAM_LOG_DIR"
 STAGE_DELAY="${QNTC_STAGE_DELAY:-0.045}"
 echo "[QUIC] 299 compressed NTC updates, stage-delay=${STAGE_DELAY}s"
 mkdir -p "$Q3DGSTREAM_LOG_DIR"
