@@ -18,6 +18,11 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+# Resolve external datasets from one shared configuration.
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import q3dg_paths as paths
+
 import numpy as np
 
 MAGIC = b'QNP01'
@@ -175,18 +180,18 @@ def write_csv(path: Path, rows: list[dict]):
 
 
 def main():
-    home = Path.home()
-    root = home / 'snap/firefox/common'
-    base = root / 'QNTC_dynamic_299_priorities_v1'
+    home = paths.DATA_DIR
+    root = paths.DATA_DIR
+    base = paths.PRIORITIES_DIR
     pa = argparse.ArgumentParser(description=__doc__)
     pa.add_argument('--frame', type=int, default=114)
     pa.add_argument('--stage-dir', type=Path, default=base/'stages')
     pa.add_argument('--order', type=Path, default=base/'orders/NTC_000114.npz')
-    pa.add_argument('--scene', type=Path, default=home/'qntc_scenes/flame_steak_official')
+    pa.add_argument('--scene', type=Path, default=paths.SCENE_DIR)
     pa.add_argument('--viewer', type=Path, default=Path(__file__).resolve().parents[2])
-    pa.add_argument('--state', type=Path, default=root/'QNTC_ref_state_114/state_000114.pt')
-    pa.add_argument('--mapping', type=Path, default=root/'QNTC_ntc114_animated_map_v2/ntc_114_hash_block_to_gaussian_ids.npz')
-    pa.add_argument('--output', type=Path, default=root/'QNTC_ntc114_color_motion_v2')
+    pa.add_argument('--state', type=Path, default=paths.STATES_DIR/'state_000114.pt')
+    pa.add_argument('--mapping', type=Path, default=paths.HASHGRID_MAP)
+    pa.add_argument('--output', type=Path, default=paths.OUTPUT_DIR/'ntc114_color_motion')
     pa.add_argument('--samples-per-tile', type=int, default=128,
                     help='Stratified stagewise comparison samples per each of 32 tiles.')
     pa.add_argument('--per-block-per-color', type=int, default=64,
