@@ -2,7 +2,7 @@
 """
 quantize_ntcs.py
 
-Convert 3DGStream / 3DGS-QuaNTiC NTC files to FP16, INT8, or INT4.
+Convert 3DGStream NTC files to FP16, INT8, or INT4.
 
 Expected input layout:
 
@@ -16,11 +16,11 @@ Expected input layout:
 
 Examples:
 
-    python quantize_ntcs.py --src ~/qntc_scenes/flame_steak_official --out ~/qntc_scenes/flame_steak_fp16 --mode fp16 --overwrite --verify
+    python quantize_ntcs.py --src ./data/scenes/flame_steak --out ./data/scenes/flame_steak_fp16 --mode fp16 --overwrite --verify
 
-    python quantize_ntcs.py --src ~/qntc_scenes/flame_steak_official --out ~/qntc_scenes/flame_steak_int8_b64 --mode int8 --block-size 64 --overwrite --verify
+    python quantize_ntcs.py --src ./data/scenes/flame_steak --out ./data/scenes/flame_steak_int8_b64 --mode int8 --block-size 64 --overwrite --verify
 
-    python quantize_ntcs.py --src ~/qntc_scenes/flame_steak_official --out ~/qntc_scenes/flame_steak_int4_b64 --mode int4 --block-size 64 --overwrite --verify
+    python quantize_ntcs.py --src ./data/scenes/flame_steak --out ./data/scenes/flame_steak_int4_b64 --mode int4 --block-size 64 --overwrite --verify
 """
 
 from __future__ import annotations
@@ -105,6 +105,7 @@ def quantize_int8_tensor(t: torch.Tensor, block_size: int) -> dict[str, Any]:
 
 
 def pack_int4_signed(q: torch.Tensor) -> torch.Tensor:
+    # Store two four-bit weights in each byte.
     q = q.contiguous().view(-1).to(torch.int16)
     q = torch.clamp(q, -7, 7)
 
@@ -246,6 +247,7 @@ def flatten_float_tensors(obj: Any) -> list[torch.Tensor]:
 
 
 def verify_quantization(original: Any, quantized: Any, mode: str) -> dict[str, float]:
+    # Check how closely decoded weights match the source tensors.
     reconstructed = quantized if mode == "fp16" else dequantize_obj(quantized)
 
     originals = flatten_float_tensors(original)
@@ -372,7 +374,7 @@ def convert_scene(args: argparse.Namespace) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Quantize 3DGS-QuaNTiC / 3DGStream NTC files to FP16, INT8, or INT4."
+        description="Quantize 3DGStream NTC files to FP16, INT8, or INT4."
     )
     parser.add_argument("--src", required=True, type=Path, help="Input scene root.")
     parser.add_argument("--out", required=True, type=Path, help="Output scene root.")
