@@ -31,6 +31,7 @@ assert _RECORD_DTYPE.itemsize == 40
 
 
 def decode_stages(paths):
+    # Combine the received stages into one parameter array.
     """Rebuild one partially received NTC on CPU with vectorized nibble decode.
 
     paths: sequence of (stage_number, path) pairs. Each file has already
