@@ -40,6 +40,7 @@ def safe_file(path: Path) -> None:
         raise ValueError(f"Unusually large source file: {path}")
 
 def plan(source: Path, target: Path) -> list[dict]:
+    # Preview only the selected source files and their checksums.
     if not source.is_dir() or not target.is_dir():
         raise ValueError("Both source and target must be existing directories")
     s, t = source.resolve(), target.resolve()
@@ -75,6 +76,7 @@ def plan(source: Path, target: Path) -> list[dict]:
     return entries
 
 def apply(source: Path, target: Path, entries: list[dict]) -> Path | None:
+    # Back up destination files before copying replacements.
     changed = [row for row in entries if row["action"] != "unchanged"]
     if not changed:
         return None
@@ -107,7 +109,7 @@ def apply(source: Path, target: Path, entries: list[dict]) -> Path | None:
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--source", type=Path, default=Path.home() / "3DGS-QuaNTiC-Demo")
+    p.add_argument("--source", type=Path, required=True, help="Location of an existing tested viewer")
     p.add_argument("--target", type=Path, default=Path(__file__).resolve().parents[1])
     p.add_argument("--apply", action="store_true", help="Actually copy files into Q3DGStream")
     a = p.parse_args()
