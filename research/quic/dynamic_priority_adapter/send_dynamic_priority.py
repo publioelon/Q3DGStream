@@ -12,16 +12,21 @@ import hashlib
 import json
 import os
 from pathlib import Path
+
+# Shared locations keep experiments independent of the author's machine.
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import q3dg_paths as paths
 import ssl
 import struct
 import sys
 import tempfile
 import time
 
-BASE = Path('/data/3dgs_storage/QNTC-Stream-PQAT-Chunks/qoe_eval/lowbit299_v11_20261011T014600_039285Z/cases/int4_keep05/pqat')
-ORIGINAL = Path.home() / 'qntc_scenes/flame_steak_official'
-STAGES = Path.home() / 'snap/firefox/common/QNTC_dynamic_299_priorities_v1/stages'
-CACHE = Path('/tmp/qntc_dynamic_priority_cache')
+BASE = paths.EXPERIMENT_DIR
+ORIGINAL = paths.SCENE_DIR
+STAGES = paths.STAGES_DIR
+CACHE = paths.CACHE_DIR / 'qntc_dynamic_priority_cache'
 HEADER = struct.Struct('!5sIBHH')
 RECORD = struct.Struct('!If32s')
 MAGIC = b'QNP01'
@@ -53,6 +58,7 @@ def validate_stage(path, frame, stage):
 
 
 def collect(args):
+    # Validate every packed stage before sending any data.
     scene = args.compressed_scene.expanduser().resolve()
     orig = args.original_scene.expanduser().resolve()
     stages = args.stages.expanduser().resolve()
