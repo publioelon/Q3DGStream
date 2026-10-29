@@ -50,3 +50,8 @@ imgui.ini
 *.WORKING_BACKUP
 *.before_*
 *.REVIEW
+
+# Local GPU viewer sync backups and machine-specific camera
+.local_backups/
+camera_flame_steak.json
+.q3dg_sync_*
