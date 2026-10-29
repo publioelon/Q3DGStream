@@ -9,13 +9,18 @@ import csv
 from collections import Counter, defaultdict
 from pathlib import Path
 
+# Resolve external datasets from one shared configuration.
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import q3dg_paths as paths
+
 LABELS = ('P0', 'P1', 'P2', 'P3')
 COLORS = ('red', 'orange', 'yellow', 'blue')
 
 
 def main():
-    home = Path.home()
-    base = home / 'snap/firefox/common/QNTC_priority_audit'
+    home = paths.DATA_DIR
+    base = paths.AUDIT_DIR
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--input', type=Path, default=base/'ntc_000114_stage_block_ids.csv')
     parser.add_argument('--out', type=Path, default=base)
