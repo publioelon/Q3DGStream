@@ -14,7 +14,6 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import q3dg_paths as paths
 import struct
-import sys
 
 HEADER = struct.Struct('!5sIBHH')
 RECORD = struct.Struct('!If32s')
