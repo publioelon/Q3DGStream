@@ -1,39 +1,55 @@
-# QUIC streaming and partial NTC reconstruction
+# Progressive NTC transmission over QUIC
 
-The QUIC implementation under `research/quic/` is a research prototype, separate from the stable TCP player at the repository root.
+The QUIC code lives under `research/quic/`. It includes the original FP32 transmission experiment, staged INT4 delivery, and an adapter that sends saliency-ranked blocks for the 299-update Flame Steak sequence.
 
-## Available experiments
+The experimental sender transmits Gaussian additions and four `.qblk` files per NTC, in the order P0, P1, P2, P3. Each stage carries network parameter blocks. Their priority is chosen before sending, and QUIC is used as the reliable transport.
 
-| Directory | Purpose |
-|---|---|
-| `research/quic/fp32_reference` | Baseline FP32 QUIC sender and cache verification |
-| `research/quic/progressive_pilot_v1` | Early P0–P3 receiver and sender integration |
-| `research/quic/progressive_299_v2` | Bounded progressive state-cache implementation |
-| `research/quic/dynamic_priority_adapter` | Sends per-frame saliency-ranked `.qblk` stages with Gaussian additions |
+## Implementations
 
-## Required receiver implementation
+| Directory | Experiment |
+| --- | --- |
+| `fp32_reference/` | FP32 QUIC sender and reference cache checks |
+| `progressive_pilot_v1/` | Initial receiver and progressive stage sender |
+| `progressive_299_v2/` | Bounded CPU decoding and per-NTC stage updates |
+| `dynamic_priority_adapter/` | Per-frame saliency-ranked stages and Gaussian additions |
 
-The sender scripts are included in Git, but the GPU-tested viewer contains local modifications to `main.py`, `renderer_cuda.py` and the progressive receiver sidecar. **A clone of the original `main` tree cannot yet run the updated QUIC pipeline as-is.** Integrate and test those local viewer changes before relying on these scripts for real-time QUIC demos.
+The sender and evaluation code are available in Git. The most recent CUDA viewer and receiver modifications are still being integrated from the working local installation. The source checks alone do not establish that a fresh clone can render progressive QUIC updates.
 
-Once the receiver is integrated, the typical pilot launches the receiver first, then the sender:
+The [GPU validation guide](GPU_VALIDATION.md) covers a read-only source preview, safe integration into a separate checkout, CUDA inference tests, and live receiver tests.
+
+## Receiver behavior
+
+A `.qblk` file contains quantized NTC weights, **not rendered geometry**. On reception, the client reconstructs the available parameter blocks and evaluates the NTC to obtain a candidate Gaussian update.
+
+Successive priority stages may refine the result for the same animation step. Each revision must be computed from the **same pre-step Gaussian state**. Applying the P1 displacement to a position that already received P0 would accumulate motion incorrectly.
+
+The frame index also matters: the dynamic NTC representation is recurrent, so the state for frame *t* depends on the preceding update. Falling behind in animation time and receiving only part of the current NTC are two separate situations.
+
+## Local 30-update experiment
+
+After the receiver has been integrated and the preflight checks pass, start the viewer and sender in separate terminals:
+
+**Receiver**
 
 ```bash
-cd research/quic/dynamic_priority_adapter
-bash preflight.sh
-# Terminal A:
+cd ~/Q3DGStream/research/quic/dynamic_priority_adapter
 bash run_receiver.sh
-# Terminal B:
-bash run_sender.sh
 ```
 
-The pilot sends **30** frame updates by default. Its `.qblk` streams are ordered by application-level priority, not by QUIC-native scheduling. The full 299-update path and adaptive streaming under network dynamics are distinct validation steps.
+**Sender**
 
-## Important state semantics
+```bash
+cd ~/Q3DGStream/research/quic/dynamic_priority_adapter
+bash preflight.sh
+QNTC_STAGE_DELAY=0 bash run_sender.sh
+```
 
-A `.qblk` chunk can be decoded independently, but it is a block of **neural network parameters**, not a tile of rendered geometry. To render after a partial update, assemble the currently available parameters and evaluate the NTC against the *same pre-step Gaussian state*. Reevaluation after P1 must not double-apply the motion already produced by P0.
+The default sender range covers updates 0 through 29, with four priority stages and one additions file per update. To transmit all 299 updates, restart the receiver and use `QNTC_END=298` on the sender.
 
-For a 30 Hz animation, the server sends one per-frame NTC update every ~33.3 ms in the existing model. **NTC age** is the difference between intended playback step and last committed step. **Partial reception** is how many P0–P3 records of the current step have arrived. These two quantities are different.
+The `QNTC_STAGE_DELAY` setting introduces a pause after each stage for inspecting partial reconstruction. A nonzero value intentionally lowers the rate of complete NTC updates.
 
-## Next integration
+## Scope of the prototype
 
-The newer receiver and CUDA-renderer patches must be checked against the latest local working copy, committed with reproducible smoke tests, and then measured under realistic QUIC latency, loss and throughput constraints. See [Results](RESULTS.md) for the currently validated subset.
+The measured local QUIC experiment confirms delivery of 30 updates, 120 priority stages, and 30 additions files. It uses **application-level stage ordering**, not QUIC's internal stream-priority mechanism. Claims about adaptive bandwidth control, end-to-end 30-update-per-second playback, or saliency-weighted rendered QoE require the corresponding network and GPU measurements.
+
+See [Results](RESULTS.md) for completed tests and [Experiments](EXPERIMENTS.md) for reconstruction evaluation.
