@@ -26,14 +26,14 @@ From the repository root, check an individual stage:
 
 ```bash
 python3 q3dgstream.py inspect-stage \
-  "$HOME/snap/firefox/common/QNTC_dynamic_299_priorities_v1/stages/NTC_000114_P0.qblk"
+  "$Q3DGSTREAM_STAGES_DIR/NTC_000114_P0.qblk"
 ```
 
 To compare all 299 stage sets against the compressed wire checkpoints:
 
 ```bash
 python3 research/evaluation/qntc_299_priority_eval.py \
-  --verify-only --out /tmp/q3dgstream_wire_verification
+  --verify-only --out "$Q3DGSTREAM_OUTPUT_DIR/wire_verification"
 ```
 
 The verification checks original block indices, FP32 scales, and packed INT4 bytes, rather than comparing only the decoded tensor's approximate values.
@@ -45,7 +45,7 @@ A short GPU run over three consecutive NTCs:
 ```bash
 python3 research/evaluation/qntc_299_priority_eval.py \
   --start 113 --end 115 --seeds 5 --batch 8192 \
-  --out /tmp/q3dgstream_eval_113_115
+  --out "$Q3DGSTREAM_OUTPUT_DIR/eval_113_115"
 ```
 
 For the complete sequence:
@@ -53,7 +53,7 @@ For the complete sequence:
 ```bash
 python3 research/evaluation/qntc_299_priority_eval.py \
   --start 0 --end 298 --seeds 5 --batch 8192 \
-  --out /tmp/q3dgstream_eval_299
+  --out "$Q3DGSTREAM_OUTPUT_DIR/eval_299"
 ```
 
 The evaluator computes the NTC transformation for saved Gaussian input states. Saliency-prioritized block reception is compared with five randomized orders. Each frame's partial NTC is compared against the **full compressed NTC for that same frame**.
