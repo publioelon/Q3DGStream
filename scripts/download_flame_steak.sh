@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
-SCENE_DIR="${HOME}/qntc_scenes"
+Q3DGSTREAM_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$Q3DGSTREAM_ROOT/scripts/env.sh"
+SCENE_DIR="$(dirname "$Q3DGSTREAM_SCENE_DIR")"
 SCENE_ZIP="${SCENE_DIR}/flame_steak.zip"
-OUT_DIR="${SCENE_DIR}/flame_steak_official"
+OUT_DIR="$Q3DGSTREAM_SCENE_DIR"
 
 mkdir -p "$SCENE_DIR"
 cd "$SCENE_DIR"
@@ -11,7 +13,7 @@ cd "$SCENE_DIR"
 python -m pip install gdown
 
 if [ ! -f "$SCENE_ZIP" ]; then
-  echo "[QNTC] Downloading Flame Steak scene..."
+  echo "[Q3DGStream] Downloading Flame Steak scene..."
   gdown 1AXDqSzSaT_uNu_DhKeSmZmrBAfuOhWYY -O "$SCENE_ZIP"
 else
   echo "[QNTC] Zip already exists: $SCENE_ZIP"
