@@ -6,7 +6,7 @@ Q3DGStream explores progressive transmission of dynamic 3D Gaussian Splatting (3
 
 The implementation extends [3DGStream](https://github.com/SJoJoK/3DGStream) with sparse INT4 NTCs, per-frame weight prioritization, and experimental QUIC streaming.
 
-[Installation](docs/QUICKSTART.md) · [Method](docs/ARCHITECTURE.md) · [Experiments](docs/EXPERIMENTS.md) · [Results](docs/RESULTS.md) · [QUIC](docs/QUIC.md)
+[Quickstart](docs/QUICKSTART.md) · [Configuration](docs/CONFIGURATION.md) · [Method](docs/ARCHITECTURE.md) · [Experiments](docs/EXPERIMENTS.md) · [Results](docs/RESULTS.md)
 
 ## Getting started
 
@@ -23,7 +23,7 @@ python3 q3dgstream.py doctor
 
 The `demo` command constructs and decodes a small example of the project's `.qblk` format. To run NTC inference or render a scene, an NVIDIA GPU, PyTorch, tiny-cuda-nn, and the Gaussian rasterizer are required. See the [Ubuntu setup guide](docs/linux.md) before installing the GPU dependencies.
 
-The [Flame Steak](docs/QUICKSTART.md) example and the saved experimental checkpoints are used throughout the research code. Large models and generated data are not stored in Git.
+The [Flame Steak](docs/QUICKSTART.md) example and saved experimental checkpoints are used throughout the research code. Large models and generated data are not stored in Git. Set the dataset locations through [Configuration](docs/CONFIGURATION.md); scripts use project-relative defaults when no path is specified.
 
 ## Approach
 
@@ -61,6 +61,7 @@ The evaluation scripts, protocol details, and recorded outputs are described in 
 ## Documentation
 
 - [Quickstart](docs/QUICKSTART.md) covers installation and the original TCP streaming example.
+- [Configuration](docs/CONFIGURATION.md) describes portable dataset, cache, and log paths.
 - [Architecture](docs/ARCHITECTURE.md) describes the representation and progressive reconstruction.
 - [Data formats](docs/FORMATS.md) documents the NTC checkpoints and binary `.qblk` stages.
 - [QUIC](docs/QUIC.md) explains the transmission experiments and receiver requirements.
