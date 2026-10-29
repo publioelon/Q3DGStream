@@ -46,11 +46,10 @@ The source installation is never modified. Earlier destination files are stored 
 With the experimental paths configured, run:
 
 ```bash
+mkdir -p "$Q3DGSTREAM_LOG_DIR"
 python scripts/gpu_validation.py --all --viewer "$PWD" \
   2>&1 | tee "$Q3DGSTREAM_LOG_DIR/gpu_validation.log"
 ```
-
-Create `"$Q3DGSTREAM_LOG_DIR"` first if necessary.
 
 The test checks NTC 114 inference on the GPU, its 1,556 retained weight blocks, the local receiver modules, parity of all 299 compressed stage sets, and a three-frame saliency-versus-random reconstruction evaluation.
 
