@@ -6,22 +6,22 @@ The default sender buffers the entire sequence before playback. This is intentio
 
 ## Setup
 
-Use an Ubuntu machine with the locally integrated QUIC viewer and the reference scene. The receiver requires the fixed-camera file and a local TLS certificate/key at `/tmp/qntc_progressive.crt` and `/tmp/qntc_progressive.key`.
+Use an Ubuntu machine with the locally integrated QUIC viewer and the reference scene. The receiver requires the fixed-camera file and a local TLS certificate/key at `"$Q3DGSTREAM_TLS_CERT"` and `"$Q3DGSTREAM_TLS_KEY"`.
 
 If the local test certificate is missing, create one:
 
 ```bash
 openssl req -x509 -newkey rsa:2048 -nodes -days 7 \
   -subj '/CN=localhost' \
-  -keyout /tmp/qntc_progressive.key \
-  -out /tmp/qntc_progressive.crt
+  -keyout "$Q3DGSTREAM_TLS_KEY" \
+  -out "$Q3DGSTREAM_TLS_CERT"
 ```
 
 Run the source checks and the sender preflight:
 
 ```bash
-source ~/venvs/qntcstream/bin/activate
-cd ~/Q3DGStream/research/quic/fp32_reference
+source scripts/env.sh
+cd research/quic/fp32_reference
 
 python test_package.py
 bash run_sender.sh --preflight-only
@@ -35,19 +35,19 @@ Run the receiver and sender in separate terminals:
 
 ```bash
 # Terminal 1
-cd ~/Q3DGStream/research/quic/fp32_reference
+cd research/quic/fp32_reference
 bash run_receiver.sh
 ```
 
 ```bash
 # Terminal 2
-cd ~/Q3DGStream/research/quic/fp32_reference
+cd research/quic/fp32_reference
 bash run_sender.sh
 ```
 
 The sender places the initial Gaussian scene and first NTC checkpoint before the configuration file. This preserves the trained coordinate bounds when the receiver initializes its network. It also sends each additions file before the corresponding NTC step.
 
-The receiver uses the dedicated `/tmp/qntc_fp32_reference_cache` and clears that cache when started. It does not clear the compressed-priority cache.
+The receiver uses the dedicated `$Q3DGSTREAM_CACHE_DIR/qntc_fp32_reference_cache` and clears that cache when started. It does not clear the compressed-priority cache.
 
 Verify a sample of the received files, then the complete cache:
 
