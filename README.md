@@ -27,7 +27,7 @@ python3 q3dgstream.py demo
 python3 q3dgstream.py test
 ```
 
-**Ubuntu + NVIDIA:** Install the CUDA environment and Flame Steak scene using the existing installers:
+**Ubuntu + NVIDIA:** On a fresh machine, install CUDA dependencies and Flame Steak scene using the installers. **If your existing `~/venvs/qntcstream` environment already works, activate it instead of rerunning the installer:**
 
 ```bash
 ./scripts/setup_linux_venv.sh
@@ -36,7 +36,7 @@ source ~/venvs/qntcstream/bin/activate
 python3 q3dgstream.py doctor
 ```
 
-For GPU checks on Ubuntu, see [GPU Validation](docs/GPU_VALIDATION.md). For the TCP receiver and NTC playback, see [Getting started](docs/QUICKSTART.md). For the **saliency-aware QUIC experiments**, see [QUIC and progressive reconstruction](docs/QUIC.md).
+For GPU checks and **safe integration of a locally tested QUIC renderer into this independent checkout**, see [GPU Validation](docs/GPU_VALIDATION.md). For the TCP receiver and NTC playback, see [Getting started](docs/QUICKSTART.md). For the **saliency-aware QUIC experiments**, see [QUIC and progressive reconstruction](docs/QUIC.md).
 
 ## Components
 
