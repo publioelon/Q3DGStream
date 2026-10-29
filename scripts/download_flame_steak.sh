@@ -16,20 +16,20 @@ if [ ! -f "$SCENE_ZIP" ]; then
   echo "[Q3DGStream] Downloading Flame Steak scene..."
   gdown 1AXDqSzSaT_uNu_DhKeSmZmrBAfuOhWYY -O "$SCENE_ZIP"
 else
-  echo "[QNTC] Zip already exists: $SCENE_ZIP"
+  echo "[Q3DGStream] Zip already exists: $SCENE_ZIP"
 fi
 
 if [ ! -d "$OUT_DIR" ]; then
-  echo "[QNTC] Extracting scene..."
+  echo "[Q3DGStream] Extracting scene..."
   unzip "$SCENE_ZIP" -d "$OUT_DIR"
 else
-  echo "[QNTC] Scene already extracted: $OUT_DIR"
+  echo "[Q3DGStream] Scene already extracted: $OUT_DIR"
 fi
 
 echo ""
-echo "[QNTC] Scene ready at: $OUT_DIR"
-echo "[QNTC] Checking files:"
+echo "[Q3DGStream] Scene ready at: $OUT_DIR"
+echo "[Q3DGStream] Checking files:"
 ls -lh "$OUT_DIR/init_3dgs.ply"
 ls -lh "$OUT_DIR/NTCs/config.json"
-echo "[QNTC] NTC count:"
+echo "[Q3DGStream] NTC count:"
 ls "$OUT_DIR"/NTCs/NTC_*.pth | wc -l
