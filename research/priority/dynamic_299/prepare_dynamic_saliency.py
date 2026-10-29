@@ -19,7 +19,6 @@ import q3dg_paths as paths
 
 import numpy as np
 
-DEFAULT_SALIENCY =
 # Use configurable data directories; input models are never modified. paths.SALIENCY_DIR
 DEFAULT_SCENE = paths.COMPRESSED_SCENE_DIR
 DEFAULT_OUT = paths.TIMELINE_FILE
