@@ -1,33 +1,49 @@
-# Verified evidence and measurement boundaries
+# Results
 
-## What passed
+The current experiments use the Flame Steak sequence with 299 NTC updates. Most progressive reconstruction measurements compare a partially received network against the **complete INT4 keep05 network** for the same frame.
 
-| Test | Observation |
-|---|---|
-| Compressed model trajectory | All 300 Gaussian states replayed, and all 14 available reference checkpoints matched exactly for XYZ and stored quaternion components |
-| `.qblk` integrity | 299/299 stage sets matched the original INT4 compressed checkpoint records (indices, per-block FP32 scales, packed 4-bit values) |
-| Progressive evaluation | 299 frames, one saliency schedule and five independent random schedules, stages P0 to P3 |
-| Basic QUIC pilot | 30 frames; 120 stages and 30 addition files received; application-level priority send order |
-| HashGrid mapping | NTC 114 structural lookup checked against 12 sampled tiny-cuda-nn gradients |
+## Checks completed
 
-## Relative translation RMS (saliency compared with five random orders)
+| Experiment | Result |
+| --- | --- |
+| Packed NTC stages | All 299 four-stage sets match their compressed wire checkpoints |
+| Saved Gaussian states | 300 states reconstructed; all 14 reference checkpoints matched the stored XYZ and quaternion values |
+| Saliency ordering | 299 updates compared with five random weight orderings |
+| QUIC pilot | 30 NTC updates, 120 stages, and 30 additions files delivered locally |
+| HashGrid block mapping | NTC 114 mapping checked against 12 sampled tiny-cuda-nn gradients |
 
-At roughly 75% cumulative block arrival, saliency ordering reduced error by ~76.75% in the red group and ~78.28% in the orange group relative to the random baseline mean. At 100% block reception the translation output matched the full compressed source. The evaluated source was **INT4 keep05**, not the uncompressed FP32 teacher.
+The stage verification report is included at `research/results/wire_stage_verification.json`. A three-frame subset of the reconstruction metrics is in `research/results/metrics_113_115.csv`.
 
-These are *isolated per-frame transformation* metrics, not yet end-to-end perceptual metrics under network loss/congestion. Current v1 rotation summaries can omit zero-length quaternion vectors; the v2 script uses an **explicit identity fallback** convention that needs checking against the live viewer's normalization behavior.
+## Reconstruction with partial weights
 
-## Image-quality metrics are not all on the same protocol
+In the offline 299-update experiment, we evaluated the NTC output after progressively receiving blocks in saliency order. Five independently randomized block orders provided the reference distribution.
 
-Earlier Flame Steak PQAT results referenced FP32 PSNR 33.938, SSIM 0.9591, LPIPS 0.0776, assessed over **50 frames** in the saved all-scenes spreadsheet. The later lowbit299 run covers **299 updates**, with an approximately 30.612 dB FP32 renderer/protocol reference. Do not combine their PSNR/SSIM/LPIPS differences as a single apples-to-apples ranking until rendered under one agreed protocol.
+At approximately 75% of the retained blocks received, saliency ordering reduced relative RMS translation error by **76.75%** in the red priority group and **78.28%** in the orange group, compared with the mean random-order error. When all four stages were reconstructed, the translation output matched the full compressed network.
 
-## Transmission overhead
+These values measure the effect of *transmission order within the compressed model*. The INT4 keep05 source already prunes most of the dense network's parameter blocks, so receiving every transmitted stage does not reconstruct the original FP32 teacher.
 
-For a representative keep05 NTC, the PyTorch packed wire checkpoint was 66,741 bytes. Four `.qblk` stage payloads contain 1,556 × 40-byte records plus 4 × 14-byte stage headers = 62,296 bytes. These are different serializations of identical INT4 block content. The `.qblk` files exclude scene initialization, additions, connection overhead, and some checkpoint metadata. Report bitrates using the explicitly chosen payload basis.
+For rotation, `qntc_299_priority_eval_rotation_v2.py` handles zero-length predicted quaternion updates using an explicit identity fallback. Rendered rotation comparisons should use the same convention as the live viewer.
 
-## Priorities still need network-level validation
+## Model size
 
-The QUIC pilot demonstrates real local QUIC file delivery, **not** transport-internal stream prioritization and not an adaptive throughput/RTT-controlled QoE test. Stage delays used to visualize progression lower the achieved update rate by design. Full 299-frame live playback and end-to-end saliency-weighted image-quality comparisons are separate milestones.
+Each keep05 NTC contains **1,556 retained 64-parameter blocks**. The original dense network has 1,991,680 parameters, or approximately 7.97 MB in FP32.
 
-## Uncollected local source
+A representative checkpoint occupies 66,741 bytes when stored in the compressed PyTorch wire representation. The four corresponding `.qblk` stage files occupy:
 
-The exact GPU-tested QUIC viewer files and `replay_int4_keep05_299.py` were executed on the Ubuntu GPU laptop but are not contained in these recovered conversation attachments. They must be collected from that machine, reviewed and checked in separately.
+```text
+1,556 blocks × 40 bytes + 4 headers × 14 bytes = 62,296 bytes
+```
+
+The difference reflects the file formats. These payload sizes exclude the initial Gaussian model, per-frame additions, connection and QUIC overhead, and any untransmitted metadata.
+
+## Image-quality evaluations
+
+Earlier Flame Steak results used a 50-frame rendering protocol and reported an FP32 reference of **33.938 dB PSNR**, **0.9591 SSIM**, and **0.0776 LPIPS**. A later 299-update experiment used a different renderer protocol and an approximately **30.612 dB FP32 reference**. Those numbers belong to different evaluations and should remain separate in comparisons.
+
+## QUIC playback
+
+The completed local QUIC pilot establishes that the frame additions and priority stages were transmitted and received. It uses application-level ordering of files, rather than a transport-internal QUIC priority scheduler.
+
+Offline partial-NTC error and transport delivery answer different questions. The next live measurements are committed NTC updates per second, displayed image quality, latency under changing bandwidth and RTT, and behavior when stages arrive after their intended playback deadline.
+
+Run instructions and external input requirements are in [Experiments](EXPERIMENTS.md) and [GPU validation](GPU_VALIDATION.md).
