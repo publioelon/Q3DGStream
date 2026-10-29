@@ -9,8 +9,8 @@ CACHE="${QNTC_FP32_CACHE:-$Q3DGSTREAM_CACHE_DIR/qntc_fp32_reference_cache}"
   echo '[STOP] For safety, cache must be a dedicated folder named qntc_fp32_reference_cache' >&2
   exit 1
 }
-[[ "$CACHE" != "$VIEWER"/* && "$CACHE" != "$Q3DGSTREAM_SCENE_DIR"/* ]] || {
-  echo '[STOP] Cache cannot be inside the source scene or viewer' >&2
+[[ "$CACHE" != "$VIEWER" && "$CACHE" != "$Q3DGSTREAM_SCENE_DIR" && "$CACHE" != "$Q3DGSTREAM_SCENE_DIR"/* ]] || {
+  echo '[STOP] Cache must be outside the source scene' >&2
   exit 1
 }
 mkdir -p "$Q3DGSTREAM_CACHE_DIR" "$Q3DGSTREAM_LOG_DIR"
