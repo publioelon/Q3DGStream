@@ -1,93 +1,70 @@
-REAL QUIC PROGRESSIVE INT4 NTC DEMO (PILOT, NOT AN OFFLINE SIMULATION)
-==================================================================
-Goal: watch uncolored, normally shaded Flame Steak Gaussians update as
-real application-prioritized QUIC block-record streams ARRIVE. This modifies
-motion (NTC params), NOT the SH colors, geometry attributes, or compression.
+Progressive QUIC pilot (v1)
+===========================
 
-CAVEATS / ACCURACY
-- This IS a real local QUIC connection. Existing project uses aioquic QUIC
-  streams, and the four stage files are sent sequentially as distinct streams.
-- Priorities are application-level ordering, NOT transport-internal
-  set_priority() or network QoS markings.
-- Pilot 'saliency' order uses the previously measured (binary) HashGrid
-  dependency map for NTC114 and dynamic fused 3D SalFoM tile priorities.
-  It is NOT the exact weighted Jacobian/Taylor ranking from the successful
-  one-NTC experiment; the 81%/91% error reductions must not be claimed for
-  this new live run. Blocks absent from NTC114's map rank last.
-- P0..P3 stage names are delivery quartiles, not independently decodable
-  Gaussian tiles or verified multi-camera agreement.
-- Receiver applies actual incoming 40-byte original INT4 records, zeros the
-  not-yet-received HashGrid blocks, and preserves the original shared MLP first.
-  It re-runs that frame's motion prediction on each stage arrival.
-- This pilot deliberately SLOWS sending with stage-delay so a human can see
-  changes; it is not a performance or latency benchmark.
-- Stable viewer mode should be no-additions, NTC_ROTATION_MODE=none; preserve
-  original colors by setting QNTC_PRIORITY_VIS=0.
-- Read-only scene/wire inputs. Viewer main.py and renderer_cuda.py are backed
-  up before modification. No existing scientific result files overwritten.
-- We have checked Python syntax, pilot QUIC record round-trip, and source
-  compatibility with the viewer archive; real CUDA+QUIC playback requires the
-  user's actual Ubuntu environment and has NOT been run in this container.
+This is the first progressive INT4 NTC transmission experiment. Its purpose
+was to display normally shaded Flame Steak Gaussians while real QUIC streams
+delivered successive parameter stages of the current NTC.
 
-UNPACK (download ZIP to ~/snap/firefox/common)
-  cd ~/snap/firefox/common
-  unzip -o QNTC_Real_QUIC_Progressive_Pilot.zip
-  source ~/venvs/qntcstream/bin/activate
+The sender transmits four indexed INT4 record groups for each step. The
+receiver rebuilds the available weights, predicts Gaussian motion again,
+and keeps the existing spherical harmonics colors. This is application-level
+ordering of reliable QUIC file streams, not QUIC-internal prioritization.
 
-BUILD DYNAMIC PRIORITY TIMELINE IF NOT ALREADY DONE
-  python QNTC_Real_QUIC_Progressive_Pilot/prepare_dynamic_saliency.py
+Priority is estimated using the NTC 114 HashGrid support map and the saved
+SalFoM timeline. It is not the same ranking used by the later per-NTC
+gradient experiment. The P0 to P3 labels refer to delivery order, not
+separately rendered Gaussian tiles.
 
-INSTALL (viewer must be closed)
-  cd ~/snap/firefox/common/QNTC_Real_QUIC_Progressive_Pilot
-  python install_progressive_quic.py --viewer ~/Q3DGStream
-  # Must show [DRY RUN OK]. If not, STOP and provide diagnostic.
-  python install_progressive_quic.py --viewer ~/Q3DGStream --apply
+This historical pilot deliberately inserts noticeable delays between
+stages so that intermediate motion can be inspected. It is not intended
+as a real-time throughput measurement.
 
-TEST WITH TWO TERMINALS (sender and viewer on same Ubuntu laptop):
+Running the original pilot
+--------------------------
 
-TERMINAL A: local TLS certificate if you do not already have one
-  openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
-    -subj '/CN=localhost' \
-    -keyout /tmp/qntc_progressive.key \
-    -out /tmp/qntc_progressive.crt
+The source is in:
+    ~/Q3DGStream/research/quic/progressive_pilot_v1
 
-TERMINAL A: start QUIC viewer (normal Gaussian colors; NOT offline autoload)
-  cd ~/Q3DGStream
-  source ~/venvs/qntcstream/bin/activate
-  QNTC_PRIORITY_VIS=0 QNTC_PROGRESSIVE_QUIC=1 NTC_DEBUG=0 \
-    python main.py --quic_listen 5002 --quic_bind 127.0.0.1 \
-      --quic_cache /tmp/qntc_progressive_cache --quic_clear_cache \
-      --quic_cert /tmp/qntc_progressive.crt \
-      --quic_key /tmp/qntc_progressive.key \
-      --frames 300 --autoplay --video_fps 30
+With the viewer stopped, first review the installation changes:
 
-TERMINAL B: send first 20 NTC updates as actual QUIC priority parts
-  cd ~/Q3DGStream
-  source ~/venvs/qntcstream/bin/activate
-  python qntc_progressive_send.py --insecure --host 127.0.0.1 \
-    --port 5002 --start 0 --end 19 --order saliency \
-    --stage-delay 0.65
+    source ~/venvs/qntcstream/bin/activate
+    cd ~/Q3DGStream/research/quic/progressive_pilot_v1
+    python install_progressive_quic.py --viewer ~/Q3DGStream
 
-Expected receiver terminal:
-  [REAL QUIC APPLY] frame=000 part=P0 received_blocks=396/1556 ...
-  [REAL QUIC APPLY] frame=000 part=P1 received_blocks=.../1556 ...
-  [REAL QUIC APPLY] frame=000 part=P2 ...
-  [REAL QUIC COMPLETE] frame=000: all 1556 records received
+Only apply the changes if the compatibility checks pass and an earlier
+working viewer has been preserved:
 
-Each stage arrival causes the last rendered timestep to be recalculated with
-its now-larger NTC parameter set, preserving original colors and lighting.
-Slow frame progression is intentional and caused by staged network delivery.
-To send the full movie, use --end 298 after restarting viewer/cache.
+    python install_progressive_quic.py --viewer ~/Q3DGStream --apply
 
-COMPARISON
-  To compare with ordinary parameter ordering, restart both and change
-  sender to --order original. The same 40-byte records and same QUIC streams
-  are sent; only their order changes.
+Create a local QUIC certificate if one is not already available:
 
-RESTORE YOUR EXISTING WORKING VIEWER
-  Close viewer, then:
-  cd ~/snap/firefox/common/QNTC_Real_QUIC_Progressive_Pilot
-  python install_progressive_quic.py --viewer ~/Q3DGStream --restore
+    openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+      -subj '/CN=localhost' \
+      -keyout /tmp/qntc_progressive.key \
+      -out /tmp/qntc_progressive.crt
 
-RESTORE does not remove your earlier priority-overlay patches, it restores the
-viewer state immediately before THIS progressive QUIC patch.
+In the first terminal, run the viewer from ~/Q3DGStream with
+QNTC_PROGRESSIVE_QUIC=1 and the receiver's --quic_listen 5002 options.
+In the second terminal, launch qntc_progressive_send.py with
+--start 0 --end 19 --order saliency --stage-delay 0.65.
+
+This experiment sends the first 20 updates for visual inspection. To
+compare the original record order, restart the receiver and change the
+sender argument to --order original.
+
+Current recommendations
+-----------------------
+
+For the full 299-update CPU-worker receiver, consult the neighboring
+progressive_299_v2 directory. For the later independently ranked
+299-NTC schedules and Gaussian additions, use dynamic_priority_adapter.
+The current documented GPU validation procedure is in docs/GPU_VALIDATION.md.
+
+Do not install this early receiver over an already working v2 receiver:
+the v1 installer rewrites experimental source hooks. The viewer, original
+NTC checkpoints, and scene data should be backed up before repeating
+historical experiments.
+
+The pilot's measured scope is local QUIC delivery with deliberately
+delayed stages. It does not establish end-to-end frame rate, image-quality
+gains, or native QUIC stream scheduling.
