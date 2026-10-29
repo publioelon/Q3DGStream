@@ -13,7 +13,6 @@ import sys
 from pathlib import Path
 
 # Shared locations keep experiments independent of the author's machine.
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import q3dg_paths as paths
 
