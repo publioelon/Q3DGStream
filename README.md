@@ -1,24 +1,32 @@
 # Q3DGStream
 
-### Saliency-Driven Adaptive Streaming of Dynamic 3D Gaussian Splatting over QUIC
+*Saliency-Driven Adaptive Streaming of Dynamic 3D Gaussian Splatting over QUIC*
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![Ubuntu](https://img.shields.io/badge/Ubuntu-Linux-E95420?style=flat-square&logo=ubuntu&logoColor=white)](docs/linux.md)
-[![CUDA](https://img.shields.io/badge/NVIDIA-CUDA-76B900?style=flat-square&logo=nvidia&logoColor=white)](docs/linux.md)
-[![Stage format](https://img.shields.io/badge/NTC-QNP01%20INT4-6D28D9?style=flat-square)](docs/FORMATS.md)
-[![License](https://img.shields.io/badge/License-MIT-2F855A?style=flat-square)](LICENSE)
+Q3DGStream investigates how to stream dynamic 3D Gaussian Splatting (3DGS) scenes while reducing the amount of data sent for each animation frame. The initial Gaussian scene is transmitted once; subsequent motion is represented by Neural Transformation Caches (NTCs) that the receiver evaluates locally.
 
-**Q3DGStream** is a research framework for transmitting dynamic 3D Gaussian Splatting scenes using **compressed Neural Transformation Caches (NTCs)**. It combines block pruning and quantization-aware training (PQAT), multi-view saliency-aware weight ordering, and progressive QUIC delivery.
+The work combines pruning-preserving quantization-aware training (PQAT), saliency-based ordering of NTC weight blocks, and progressive delivery over QUIC. The aim is to make useful motion information available earlier when bandwidth is limited.
 
-![Q3DGStream processing pipeline](docs/assets/pipeline.svg)
+## How it works
 
-The initial 3D scene is transferred once. Each animation update then carries a compact NTC whose weight blocks are organized into four saliency priorities. The receiver reconstructs the available weights, executes the NTC and renders updated Gaussians.
+Each NTC predicts changes in Gaussian positions and rotations. Rather than send the full network at every step, we retain selected parameter blocks and encode their weights in INT4. A per-frame priority schedule then determines the order in which these blocks are transmitted.
 
-> **Project status:** The original TCP renderer, standalone QNP01 decoder and offline analysis tools are in this repository. A 30-update QUIC pilot has been tested with a locally patched receiver; the exact local viewer patches are still being incorporated. Experimental QUIC scripts require these receiver hooks, as detailed in [QUIC setup](docs/QUIC.md). Adaptive network scheduling and end-to-end saliency QoE are active research targets.
+The compressed weights are stored in four successive priority stages, P0 through P3, using the project's `.qblk` format. The receiver can reconstruct a partial NTC from the stages received so far and evaluate it against the corresponding Gaussian state.
 
-## Quick start
+The stages are not independent pieces of geometry: they are parts of a neural network. Progressive reconstruction must use the same input state for each revision of a frame's NTC.
 
-**No GPU required:** Clone the project and inspect an example quantized NTC priority stage:
+## Repository contents
+
+- `main.py`, `renderer_cuda.py`, `NTC.py`: 3DGS viewer and NTC inference.
+- `research/priority/`: saliency-based block ranking, stage generation, and HashGrid analysis.
+- `research/quic/`: QUIC senders and progressive reception experiments.
+- `research/evaluation/`: stage verification and reconstruction accuracy measurements.
+- `q3dgstream.py`: lightweight commands for inspecting the binary format and running source tests.
+
+The original viewer's TCP path is retained as a baseline. The newer QUIC receiver uses additional locally tested CUDA and receiver-side changes, which are being validated in this repository before being treated as the default playback path.
+
+## Getting started
+
+Clone the repository and run the format demo and tests:
 
 ```bash
 git clone https://github.com/publioelon/Q3DGStream.git
@@ -27,50 +35,34 @@ python3 q3dgstream.py demo
 python3 q3dgstream.py test
 ```
 
-**Ubuntu + NVIDIA:** On a fresh machine, install CUDA dependencies and Flame Steak scene using the installers. **If your existing `~/venvs/qntcstream` environment already works, activate it instead of rerunning the installer:**
+These checks do not require a GPU. For experiments on Ubuntu with NVIDIA CUDA, see the [Linux installation guide](docs/linux.md) and [GPU validation instructions](docs/GPU_VALIDATION.md). If you already have a working `qntcstream` environment, reuse it rather than reinstalling the CUDA stack.
+
+To check the current environment:
 
 ```bash
-./scripts/setup_linux_venv.sh
 source ~/venvs/qntcstream/bin/activate
-./scripts/download_flame_steak.sh
 python3 q3dgstream.py doctor
 ```
 
-For GPU checks and **safe integration of a locally tested QUIC renderer into this independent checkout**, see [GPU Validation](docs/GPU_VALIDATION.md). For the TCP receiver and NTC playback, see [Getting started](docs/QUICKSTART.md). For the **saliency-aware QUIC experiments**, see [QUIC and progressive reconstruction](docs/QUIC.md).
+The original TCP playback commands are documented in [Quickstart](docs/QUICKSTART.md). The progressive QUIC experiments and their requirements are covered in [QUIC](docs/QUIC.md).
 
-## Components
+## Current results
 
-| Component | What it does | Entry point |
-| :-- | :-- | :-- |
-| **Dynamic 3DGS viewer** | Render initial Gaussians and NTC-based motion | `main.py` / `renderer_cuda.py` |
-| **PQAT and priority generation** | Saliency rank and package retained INT4 NTC blocks | `research/priority/dynamic_299/` |
-| **Multiview saliency** | Build temporal importance from saved SalFoM predictions | `research/priority/dynamic_299/prepare_dynamic_saliency.py` |
-| **HashGrid influence map** | Trace spatial encoding blocks to influenced Gaussians | `research/priority/hashgrid_ntc114/` |
-| **Progressive QUIC prototype** | Transmit frame-indexed P0–P3 stages and additions | `research/quic/` |
-| **Reconstruction evaluation** | Compare saliency order with seeded random order | `research/evaluation/` |
+The INT4 keep05 configuration retains 1,556 blocks of 64 weights per NTC. A representative compressed checkpoint is 66,741 bytes, compared with approximately 7.97 MB for the dense FP32 checkpoint. Its four `.qblk` stages together contain 62,296 bytes of weight records and stage headers.
 
-## Verified experimental results
+The stage records were checked against the compressed checkpoints for all 299 NTC updates. In the separate partial-reconstruction evaluation, saliency-guided ordering reduced relative RMS translation error by approximately 77% to 78% in the two highest-priority regions at 75% cumulative block reception, compared with five random block orders.
 
-The **INT4 keep05** NTC uses 1,556 retained blocks of 64 weights. A representative compressed PyTorch wire checkpoint occupies **66.74 KB**, compared with approximately **7.97 MB** for the dense FP32 NTC. Four `.qblk` stages contain **62,296 bytes** of indexed INT4 records and stage headers, excluding separate checkpoint metadata. All **299 / 299** stage sets matched their corresponding compressed checkpoints exactly. Reconstructed 300-frame compressed trajectories matched all 14 saved checkpoint states.
+These are results from the compressed NTC representation and offline reconstruction experiments. The live QUIC pilot has been exercised over a local connection; GPU playback integration and network-adaptation measurements are separate tests.
 
-In a 299-frame isolated-transform experiment with five random seeds, saliency-aware ordering reduced relative RMS translation reconstruction error in the highest-priority regions by around **77%–78%** at roughly 75% cumulative block reception, relative to random ordering. Details, protocol distinctions and citations are in [Results](docs/RESULTS.md).
+Details of the experimental setup and measurements are in [Results](docs/RESULTS.md) and [Experiments](docs/EXPERIMENTS.md).
 
 ## Documentation
 
-| Topic | Guide |
-| :-- | :-- |
-| Installation and first playback | [QUICKSTART](docs/QUICKSTART.md) |
-| Architecture and NTC inference | [ARCHITECTURE](docs/ARCHITECTURE.md) |
-| PQAT, QNP01 `.qblk`, and file types | [FORMATS](docs/FORMATS.md) |
-| QUIC playback, receiver requirements | [QUIC](docs/QUIC.md) |
-| Available metrics and validation | [RESULTS](docs/RESULTS.md) |
-| Research workflow and reproducibility | [EXPERIMENTS](docs/EXPERIMENTS.md) |
-| Development and contribution | [CONTRIBUTING](CONTRIBUTING.md) |
+- [Architecture](docs/ARCHITECTURE.md): NTC inference, compression, saliency ranking, and reconstruction.
+- [Formats](docs/FORMATS.md): INT4 weights and the `.qblk` stage layout.
+- [Quickstart](docs/QUICKSTART.md): installation and baseline playback.
+- [QUIC](docs/QUIC.md): progressive transmission experiments.
+- [GPU validation](docs/GPU_VALIDATION.md): CUDA inference and live playback checks.
+- [Contributing](CONTRIBUTING.md): development notes.
 
-## GPU validation
-
-Run `python scripts/gpu_validation.py --all` after installing the supported CUDA dependencies and obtaining the sample scene. See [the GPU validation guide](docs/GPU_VALIDATION.md). **GPU inference is not verified merely by passing GitHub Actions.**
-
-## Project lineage
-
-The dynamic scene representation and NTC foundation follow [3DGStream](https://github.com/SJoJoK/3DGStream). Q3DGStream extends this foundation with NTC compression, spatial saliency prioritization and experimental QUIC streaming. The original viewer and setup files remain available; the newer research tools live under `research/` so baseline behavior remains reproducible.
+Q3DGStream builds on the dynamic scene representation and viewer from [3DGStream](https://github.com/SJoJoK/3DGStream). The repository is distributed under the [MIT License](LICENSE).
