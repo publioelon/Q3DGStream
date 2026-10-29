@@ -37,8 +37,10 @@ runtime/
 *.gif
 *_cache/
 qntc_stream_test/
-QNTC_299_student_states/
 *.db
+
+# Private datasets and generated output
+/data/
 
 # Experiment output
 output/
