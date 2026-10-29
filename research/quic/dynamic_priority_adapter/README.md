@@ -8,9 +8,9 @@ The pilot uses application-level priority ordering. QUIC transports the files re
 
 The reference experiment uses:
 
-- ``$Q3DGSTREAM_SCENE_DIR/``, including the initial PLY and per-frame `additional_3dgs/` files.
-- The INT4 keep05 PQAT experiment under ``$Q3DGSTREAM_EXPERIMENT_DIR/``.
-- ``$Q3DGSTREAM_STAGES_DIR/``, containing four stages for each of the 299 NTCs.
+- `$Q3DGSTREAM_SCENE_DIR/`, including the initial PLY and per-frame `additional_3dgs/` files.
+- The INT4 keep05 PQAT experiment under `$Q3DGSTREAM_EXPERIMENT_DIR/`.
+- `$Q3DGSTREAM_STAGES_DIR/`, containing four stages for each of the 299 NTCs.
 
 The compressed and original initial scenes must match. The preflight checks their hashes, the availability of additions and stage files, block IDs, and free cache space.
 
@@ -45,9 +45,9 @@ Inspect the logs:
 
 ```bash
 grep -E 'QUIC CPU READY|REAL QUIC ERROR|draw error|additions_' \
-  $Q3DGSTREAM_LOG_DIR/dynamic_priority_receiver.log | tail -60
+  "$Q3DGSTREAM_LOG_DIR/dynamic_priority_receiver.log" | tail -60
 
-tail -40 $Q3DGSTREAM_LOG_DIR/dynamic_priority_sender.log
+tail -40 "$Q3DGSTREAM_LOG_DIR/dynamic_priority_sender.log"
 ```
 
 ## Stream all updates
