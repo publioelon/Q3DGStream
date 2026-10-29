@@ -1,9 +1,4 @@
-# Shared viewer utilities.
-#
-# This file contains the camera model and small OpenGL helper functions used by
-# both renderers. It is intentionally kept independent from the QNTC-specific
-# streaming logic so the viewer and renderer code can share the same basic UI,
-# shader, buffer, and camera operations.
+# Camera, shader, and OpenGL buffer helpers.
 
 from OpenGL.GL import *
 import OpenGL.GL.shaders as shaders
@@ -48,6 +43,7 @@ class Camera:
         return np.stack([x, self.up, z], axis=-1)
 
     def get_view_matrix(self):
+        # Build the camera transformation used by both renderers.
         return np.array(glm.lookAt(self.position, self.target, self.up))
 
     def get_project_matrix(self):
