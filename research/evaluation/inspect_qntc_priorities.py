@@ -8,6 +8,11 @@ import argparse
 import csv
 from collections import Counter, defaultdict
 from pathlib import Path
+
+# Resolve external datasets from one shared configuration.
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import q3dg_paths as paths
 import struct
 import sys
 
@@ -102,19 +107,19 @@ def compute_spatial_membership(args, frame, rows):
 
 
 def main():
-    h = Path.home()
-    root = h / 'snap/firefox/common/QNTC_dynamic_299_priorities_v1'
+    h = paths.DATA_DIR
+    root = paths.PRIORITIES_DIR
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--frame', type=int, default=114, help='Inspect one NTC (default 114)')
     p.add_argument('--all', action='store_true', help='Read every NTC 0-298')
     p.add_argument('--stages', type=Path, default=root/'stages')
     p.add_argument('--orders', type=Path, default=root/'orders')
-    p.add_argument('--out', type=Path, default=h/'snap/firefox/common/QNTC_priority_audit')
+    p.add_argument('--out', type=Path, default=paths.AUDIT_DIR)
     p.add_argument('--print-ids', action='store_true', help='Print every original block ID to terminal')
     p.add_argument('--with-tiles', action='store_true', help='Also cross HashGrid blocks with NTC114 Gaussian tile colors')
-    p.add_argument('--map', type=Path, default=h/'snap/firefox/common/QNTC_ntc114_animated_map_v2/ntc_114_hash_block_to_gaussian_ids.npz')
-    p.add_argument('--init-ply', type=Path, default=h/'qntc_scenes/flame_steak_official/init_3dgs.ply')
-    p.add_argument('--viewer', type=Path, default=h/'Q3DGStream')
+    p.add_argument('--map', type=Path, default=paths.HASHGRID_MAP)
+    p.add_argument('--init-ply', type=Path, default=paths.SCENE_DIR/'init_3dgs.ply')
+    p.add_argument('--viewer', type=Path, default=paths.ROOT)
     a = p.parse_args()
     if a.with_tiles and a.all:
         p.error('--with-tiles requires one selected frame (NTC114); mapping not available for every NTC')
