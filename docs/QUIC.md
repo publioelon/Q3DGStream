@@ -32,14 +32,14 @@ After the receiver has been integrated and the preflight checks pass, start the 
 **Receiver**
 
 ```bash
-cd ~/Q3DGStream/research/quic/dynamic_priority_adapter
+cd research/quic/dynamic_priority_adapter
 bash run_receiver.sh
 ```
 
 **Sender**
 
 ```bash
-cd ~/Q3DGStream/research/quic/dynamic_priority_adapter
+cd research/quic/dynamic_priority_adapter
 bash preflight.sh
 QNTC_STAGE_DELAY=0 bash run_sender.sh
 ```
