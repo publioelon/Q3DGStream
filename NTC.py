@@ -1,9 +1,4 @@
-# Thin wrapper around the Neural Transformation Cache.
-#
-# The NTC receives Gaussian positions, contracts them into the learned scene
-# bounds, and predicts per-Gaussian motion for the current frame. Points outside
-# the bounds are masked out and keep the identity/no-motion update. The actual
-# network is the tiny-cuda-nn model loaded from each checkpoint.
+# NTC wrapper: normalize positions and predict per-Gaussian motion.
 
 import torch
 class NeuralTransformationCache(torch.nn.Module):
@@ -17,6 +12,7 @@ class NeuralTransformationCache(torch.nn.Module):
         torch.save(self.state_dict(),path)
         
     def get_contracted_xyz(self, xyz):
+        # Normalize positions to the learned scene bounds.
         with torch.no_grad():
             contracted_xyz=(xyz-self.xyz_bound_min)/(self.xyz_bound_max-self.xyz_bound_min)
             return contracted_xyz
