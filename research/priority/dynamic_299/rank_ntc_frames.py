@@ -15,7 +15,6 @@ import argparse, json, math, os, sys, time
 from pathlib import Path
 
 # Load project-wide paths instead of machine-specific defaults.
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import q3dg_paths as paths
 import numpy as np
