@@ -12,11 +12,17 @@ import re
 import sys
 from pathlib import Path
 
+# Load project-wide paths instead of machine-specific defaults.
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import q3dg_paths as paths
+
 import numpy as np
 
-DEFAULT_SALIENCY = Path('/data/3dgs_storage/QNTC_Saliency_Pilot/float3d_calibrated12_adjoint/raw_float32')
-DEFAULT_SCENE = Path('/data/3dgs_storage/QNTC-Stream-PQAT-Chunks/qoe_eval/lowbit299_v11_20261011T014600_039285Z/cases/int4_keep05/pqat/scenes/candidate')
-DEFAULT_OUT = Path.home()/'snap/firefox/common/NTC_dynamic_saliency_timeline.json'
+DEFAULT_SALIENCY =
+# Use configurable data directories; input models are never modified. paths.SALIENCY_DIR
+DEFAULT_SCENE = paths.COMPRESSED_SCENE_DIR
+DEFAULT_OUT = paths.TIMELINE_FILE
 
 
 def spatial_tiles(xyz: np.ndarray, count: int):
