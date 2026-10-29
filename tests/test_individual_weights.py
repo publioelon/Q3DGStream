@@ -13,6 +13,7 @@ from map_individual_weights import (
     BLOCK, HASH_BLOCKS, make_csr, merge_weight_pairs,
     quaternion_angle, weight_accesses,
 )
+from map_gaussian_blocks import accessed_for_positions
 
 
 class IndividualWeightTests(unittest.TestCase):
@@ -65,6 +66,17 @@ class IndividualWeightTests(unittest.TestCase):
         row = int(np.flatnonzero(w == 168)[0])
         np.testing.assert_array_equal(gids[offsets[row]:offsets[row + 1]], [0, 1])
         self.assertAlmostEqual(float(c[offsets[row]]), 0.015625, places=6)
+
+    def test_weight_support_reduces_to_existing_block_support(self):
+        xyz = np.asarray([[0.25, 0.25, 0.25],
+                          [0.5, 0.5, 0.5]], np.float32)
+        g, w, _ = self.access(xyz)
+        original_g, original_blocks = accessed_for_positions(
+            xyz, {}, self.layout, 4, "linear", self.primes)
+        # Every accessed weight belongs to one of the original blocks.
+        weight_pairs = np.unique((w // BLOCK) * len(xyz) + g)
+        block_pairs = np.unique(original_blocks * len(xyz) + original_g)
+        np.testing.assert_array_equal(weight_pairs, block_pairs)
 
     def test_unretained_blocks_produce_no_pairs(self):
         self.mask[:] = False
