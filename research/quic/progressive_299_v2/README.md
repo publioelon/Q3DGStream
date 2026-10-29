@@ -31,7 +31,7 @@ The installer creates backups ending in `.before_bounded_progressive_v2` and doe
 
 ## Playback
 
-A local TLS certificate and key must exist at `"$Q3DGSTREAM_TLS_CERT"` and `"$Q3DGSTREAM_TLS_KEY"`. Start the receiver and sender in separate terminals from this directory:
+A local TLS certificate and key must exist at `$Q3DGSTREAM_TLS_CERT` and `$Q3DGSTREAM_TLS_KEY`. Start the receiver and sender in separate terminals from this directory:
 
 ```bash
 bash run_receiver.sh
