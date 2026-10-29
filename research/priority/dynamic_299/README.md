@@ -1,54 +1,51 @@
-# QNTC Dynamic Saliency-Aware NTC Block Priorities V1
+# Saliency-aware NTC block ranking
 
-This is **offline preparation** for all 299 NTCs, NOT yet a validated real-time QUIC quality result. Nothing edits `~/Q3DGStream/main.py`, `renderer_cuda.py`, your original FP32 scene, compressed checkpoint files, or the existing sender/receiver. You must run it in the working `qntcstream` virtualenv on the Ubuntu GPU machine.
+This experiment generates a transmission order for the retained INT4 weight blocks of each NTC in the 299-update Flame Steak sequence. It prepares the weights for progressive delivery; it does not send them over QUIC.
 
-## What it does
+The implementation uses an independent block ranking for each NTC, rather than assuming that NTC 114's sensitivity map remains valid for the rest of the animation.
 
-1. Builds a 32-tile importance timeline from the existing **36 saved 12-camera SalFoM 3D anchors** using `prepare_dynamic_saliency.py`. The timeline uses measured anchors and interpolates scores between them; it does not claim new SalFoM predictions for every intermediate frame.
-2. For each selected sparse INT4 keep05 PQAT NTC, loads its own 1,556 retained 64-parameter block records, reconstructs its **exact compressed** weights, and re-measures sensitivity with tiny-cuda-nn gradients for sampled Gaussians in each of 32 persistent spatial groups. Unlike the earlier pilot, this does **not** reuse NTC114 gradient support for other checkpoints.
-3. Combines per-NTC block sensitivities with that frame's saliency tile weights. Assigns two top-ranked tiles P0, two P1, four nearby P2, other P3. Shared HashGrid blocks are scored across all tiles they influence. The decoder MLP blocks go first, then HashGrid records in descending importance.
-4. Saves an `orders/NTC_XXXXXX.npz` schedule for each frame. With `--emit-stages`, saves four `stages/NTC_XXXXXX_P[0-3].qblk` blobs of original 40-byte INT4 records, ready for a later QUIC sender integration. The `.qblk` format is unchanged. `check_schedule.py --stages` verifies that all staged binary records equal their source checkpoint records, bit-for-bit.
+## Ranking procedure
 
-## Commands
+The saliency timeline is built from 36 saved fused 3D SalFoM anchors obtained from 12 camera views. Scores between the anchors are interpolated. The scene's 280,768 persistent Gaussians are partitioned into 32 spatial groups.
 
-Install package in your downloads folder, then:
+For each NTC, the program loads the INT4 keep05 checkpoint, reconstructs the retained weights, and probes the network with tiny-cuda-nn to estimate the sensitivity of the Gaussian groups to its parameter blocks. Those measurements are combined with the frame's saliency scores.
+
+Priority is assigned to spatial groups first: two highest-ranked groups belong to P0, the next two to P1, four nearby groups to P2, and the rest to P3. The retained network blocks are ordered by their estimated influence on these groups. Shared HashGrid parameters can affect several groups; MLP blocks are sent first when retained.
+
+## Run
+
+Activate the installed CUDA environment, then use the scripts in this directory:
 
 ```bash
-cd ~/snap/firefox/common
-unzip -o QNTC_Dynamic_299_Priorities_V1.zip -d QNTC_Dynamic_299_Priorities_V1
-cd QNTC_Dynamic_299_Priorities_V1
+source ~/venvs/qntcstream/bin/activate
+cd ~/Q3DGStream/research/priority/dynamic_299
+
 bash run_pilot.sh
-```
-
-Pilot checks CPU-only synthetic tests; generates the saved-saliency timeline; and ranks NTC114 with 32 tiles, 128 sampled Gaussians per tile, and 2 gradient probes per tile. It verifies the stage bytes match the original source. Outputs are saved under `~/snap/firefox/common/QNTC_dynamic_299_priorities_v1`.
-
-Once NTC114 passes, check whether schedules change over a small sequence:
-
-```bash
 bash run_small_sequence.sh
-```
-
-Then extend to all checkpoints:
-
-```bash
 bash run_all.sh
 ```
 
-**Full run is computationally heavy** (up to 299×32×2 gradient probes). Each NTC is processed sequentially, with no full sequence loaded in GPU memory; the command skips completed outputs to support restart. Do not run with other heavy GPU workloads. It creates ~20 MB of stage payloads and a few MB of compact schedules (not another 2.3 GiB scene copy).
+The pilot tests NTC 114. The next command checks the small range 112 through 116. The full run ranks updates 0 through 298 and checks the emitted stage files.
 
-Check just a range without retransmitting anything:
+To process an individual range:
 
 ```bash
 python rank_ntc_frames.py --start 110 --end 118 --emit-stages
 python check_schedule.py --start 110 --end 118 --stages
 ```
 
-The full run uses the existing INT4 keep05 **PQAT** wire files. A high-quality compressor is still needed: a correct priority order does not recover the 95% of blocks absent from this sparse format. The successful buffered FP32 QUIC baseline is preserved.
+The default output directory is `~/snap/firefox/common/QNTC_dynamic_299_priorities_v1/`:
 
-## Technical limitations and interpretation
+- `orders/NTC_XXXXXX.npz` contains the block ranking and spatial group priorities.
+- `stages/NTC_XXXXXX_P0.qblk` through `P3.qblk` contain the original indexed 40-byte INT4 records.
+- `check_schedule.py` verifies that the staged records match the source compressed checkpoint.
 
-- Sensitivity is approximate (`(d output / d weight × weight)^2` over randomized output probes). The input XYZ sample comes from **fixed initial persistent Gaussian coordinates**, not exact deformed Gaussian coordinates at every frame. This is a time-varying *per-NTC* sensitivity estimate, not a full motion-trajectory derivative. To use actual frame-state positions requires validating Gaussian state snapshots first.
-- Saliency comes from saved multiview **fused 3D SalFoM** anchors. The rank based P0/P1 groups are **not** verified per-camera gaze consensus or exact visibility. 36 anchor frames, not 299 new inference runs.
-- Only 280,768 persistent Gaussians are spatially represented. Per-frame newly added Gaussians have no persistent ID association in this experiment.
-- Not yet live QUIC streaming, no image PSNR or QoE results. Do **not** report it as such. Implement the sender's schedule support after pilot checks.
-- All output directories are in the user's home snap location; source files and the working viewer remain untouched. Never invoke `run_receiver.sh` with `--quic_clear_cache` when preserving your verified FP32 cache.
+## Notes on the measurement
+
+Sensitivity is estimated using randomized output-gradient probes. The current ranking uses sampled **initial positions** of persistent Gaussians, not the updated positions at every animation step. Thus, the per-NTC network weights change during ranking while the sampled spatial positions remain fixed.
+
+Newly added per-frame Gaussians are outside the persistent-Gaussian grouping. Their handling belongs to the scene update and playback paths.
+
+The full run is computationally intensive: up to 299 NTCs × 32 groups × two gradient probes, with up to 128 Gaussian samples per group. It processes checkpoints sequentially and skips completed outputs. The stages preserve the compressed INT4 model; their ordering does not replace blocks that pruning removed.
+
+See [architecture](../../../docs/ARCHITECTURE.md), [stage format](../../../docs/FORMATS.md), and [evaluation](../../../docs/EXPERIMENTS.md).
