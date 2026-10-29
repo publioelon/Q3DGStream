@@ -8,9 +8,9 @@ The pilot uses application-level priority ordering. QUIC transports the files re
 
 The reference experiment uses:
 
-- `~/qntc_scenes/flame_steak_official/`, including the initial PLY and per-frame `additional_3dgs/` files.
-- The INT4 keep05 PQAT experiment under `/data/3dgs_storage/QNTC-Stream-PQAT-Chunks/qoe_eval/lowbit299_v11_20261011T014600_039285Z/cases/int4_keep05/pqat/`.
-- `~/snap/firefox/common/QNTC_dynamic_299_priorities_v1/stages/`, containing four stages for each of the 299 NTCs.
+- ``$Q3DGSTREAM_SCENE_DIR/``, including the initial PLY and per-frame `additional_3dgs/` files.
+- The INT4 keep05 PQAT experiment under ``$Q3DGSTREAM_EXPERIMENT_DIR/``.
+- ``$Q3DGSTREAM_STAGES_DIR/``, containing four stages for each of the 299 NTCs.
 
 The compressed and original initial scenes must match. The preflight checks their hashes, the availability of additions and stage files, block IDs, and free cache space.
 
@@ -21,7 +21,7 @@ The QUIC receiver must first be integrated into Q3DGStream and validated on the 
 Start with the sender preflight:
 
 ```bash
-cd ~/Q3DGStream/research/quic/dynamic_priority_adapter
+cd research/quic/dynamic_priority_adapter
 bash preflight.sh
 ```
 
@@ -39,15 +39,15 @@ QNTC_STAGE_DELAY=0 bash run_sender.sh
 
 The default sequence covers updates 0 through 29. The sender transfers the additions file before the four priority stages for that update. The receiver renders with the original spherical harmonics colors, rotation mode `current`, and translation scale 1.0.
 
-The receiver clears only `/tmp/qntc_dynamic_priority_cache`. The reference FP32 cache is separate and is not deleted by this script.
+The receiver clears only `$Q3DGSTREAM_CACHE_DIR/qntc_dynamic_priority_cache`. The reference FP32 cache is separate and is not deleted by this script.
 
 Inspect the logs:
 
 ```bash
 grep -E 'QUIC CPU READY|REAL QUIC ERROR|draw error|additions_' \
-  /tmp/qntc_dynamic_priority_receiver.log | tail -60
+  $Q3DGSTREAM_LOG_DIR/dynamic_priority_receiver.log | tail -60
 
-tail -40 /tmp/qntc_dynamic_priority_sender.log
+tail -40 $Q3DGSTREAM_LOG_DIR/dynamic_priority_sender.log
 ```
 
 ## Stream all updates
