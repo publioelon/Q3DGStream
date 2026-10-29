@@ -14,14 +14,17 @@ import time
 
 HEADER = struct.Struct("!5sIBHH")
 RECORD = struct.Struct("!If32s")
-HOME = Path.home()
-CASE = Path("/data/3dgs_storage/QNTC-Stream-PQAT-Chunks/qoe_eval/"
-            "lowbit299_v11_20261011T014600_039285Z/cases/int4_keep05/pqat")
-STAGES = HOME / "snap/firefox/common/QNTC_dynamic_299_priorities_v1/stages"
-STATES = HOME / "snap/firefox/common/QNTC_299_student_states"
-SCENE = HOME / "qntc_scenes/flame_steak_official"
+# Keep model and output locations independent of the test workstation.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import q3dg_paths as paths
+
+CASE = paths.EXPERIMENT_DIR
+STAGES = paths.STAGES_DIR
+STATES = paths.STATES_DIR
+SCENE = paths.SCENE_DIR
 
 def stage_check(frame: int = 114) -> str:
+    # Reject missing, duplicated, or malformed INT4 records.
     all_ids = set()
     sizes = []
     for priority in range(4):
@@ -45,6 +48,7 @@ def stage_check(frame: int = 114) -> str:
     return f"frame={frame}, 1556 unique blocks, {sum(sizes):,} staged bytes"
 
 def cuda_ntc_test() -> str:
+    # Compare the loaded network against the saved compressed NTC.
     import torch
     if not torch.cuda.is_available():
         raise RuntimeError("PyTorch CUDA unavailable; check driver, virtualenv and installation")
@@ -108,7 +112,7 @@ def run_subprocess(name: str, command: list[str], cwd: Path) -> str:
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--viewer", type=Path, default=HOME / "3DGS-QuaNTiC-Demo",
+    p.add_argument("--viewer", type=Path, default=paths.ROOT,
                    help="Locally patched working viewer (not the public baseline checkout)")
     p.add_argument("--project", type=Path, default=Path(__file__).resolve().parents[1],
                    help="Git checkout containing research/evaluation")
@@ -140,13 +144,13 @@ def main() -> int:
         run("299-frame wire-byte parity",
             lambda: run_subprocess("wire parity",
                 [sys.executable, str(script), "--verify-only",
-                 "--out", "/tmp/q3dgstream_gpu_eval_113_115"], a.project))
+                 "--out", str(paths.OUTPUT_DIR / "gpu_validation")], a.project))
     if a.evaluate_three or a.all:
         run("Three-frame CUDA saliency/random evaluation",
             lambda: run_subprocess("evaluation",
                 [sys.executable, str(script), "--start", "113", "--end", "115",
                  "--seeds", "5", "--batch", "8192",
-                 "--out", "/tmp/q3dgstream_gpu_eval_113_115"], a.project))
+                 "--out", str(paths.OUTPUT_DIR / "gpu_validation")], a.project))
     print(f"\nRESULT: {passed} PASS, {failures} FAIL", flush=True)
     if failures == 0 and (a.all or (a.verify_all and a.evaluate_three and a.check_quic)):
         print("Offline GPU and local receiver checks passed. Live QUIC rendering still requires visual verification.", flush=True)
