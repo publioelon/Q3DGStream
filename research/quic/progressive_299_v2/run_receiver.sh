@@ -5,7 +5,7 @@ source "$Q3DGSTREAM_ROOT/scripts/env.sh"
 mkdir -p "$Q3DGSTREAM_CACHE_DIR" "$Q3DGSTREAM_LOG_DIR"
 cd "$Q3DGSTREAM_ROOT"
 if [[ ! -s "$Q3DGSTREAM_TLS_CERT" || ! -s "$Q3DGSTREAM_TLS_KEY" ]]; then
-  echo '[STOP] QUIC local certificate missing. Follow README to create it.' >&2
+  echo '[STOP] QUIC certificate missing. See docs/GPU_VALIDATION.md.' >&2
   exit 1
 fi
 echo '[QUIC] Viewer: original colors, 300 display frames, no loop, CPU decode off UI thread'
