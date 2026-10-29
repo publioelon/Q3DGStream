@@ -10,7 +10,7 @@ CACHE=/tmp/qntc_dynamic_priority_cache
 }
 [[ -f "$VIEWER/camera_flame_steak.json" ]] || { echo '[STOP] Missing fixed camera' >&2; exit 1; }
 [[ -f "$VIEWER/qntc_progressive_live.py" ]] || { echo '[STOP] Missing progressive receiver sidecar' >&2; exit 1; }
-[[ -f "$VIEWER/renderer_cuda.py.WORKING_BACKUP" ]] || { echo '[STOP] Save working renderer as renderer_cuda.py.WORKING_BACKUP first' >&2; exit 1; }
+# A new Q3DGStream checkout keeps backups under .local_backups/ during safe synchronization.
 cd "$VIEWER"
 python - <<'PY'
 from pathlib import Path
