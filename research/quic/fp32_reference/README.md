@@ -6,11 +6,13 @@ The default sender buffers the entire sequence before playback. This is intentio
 
 ## Setup
 
-Use an Ubuntu machine with the locally integrated QUIC viewer and the reference scene. The receiver requires the fixed-camera file and a local TLS certificate/key at `"$Q3DGSTREAM_TLS_CERT"` and `"$Q3DGSTREAM_TLS_KEY"`.
+Use an Ubuntu machine with the locally integrated QUIC viewer and the reference scene. The receiver requires the fixed-camera file and a local TLS certificate/key at `$Q3DGSTREAM_TLS_CERT` and `$Q3DGSTREAM_TLS_KEY`.
 
-If the local test certificate is missing, create one:
+If the local test certificate is missing, activate the environment from the repository root, then create one:
 
 ```bash
+source scripts/env.sh
+mkdir -p "$(dirname "$Q3DGSTREAM_TLS_KEY")"
 openssl req -x509 -newkey rsa:2048 -nodes -days 7 \
   -subj '/CN=localhost' \
   -keyout "$Q3DGSTREAM_TLS_KEY" \
