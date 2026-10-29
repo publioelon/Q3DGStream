@@ -1,12 +1,4 @@
-# TCP sender for QNTC/3DGStream scenes.
-#
-# The protocol is deliberately simple: send a relative path, send the file size,
-# then send the raw file bytes. It is a practical baseline for testing
-# progressive NTC delivery, not a final network protocol.
-#
-# The initial 3DGS scene and NTC config are sent first. The NTC files are then
-# streamed in temporal order. The --ntc_stride option sends only every N-th NTC,
-# which is useful for testing lower update rates and bandwidth reduction.
+# TCP reference sender for the initial scene and ordered NTC updates.
 
 import argparse
 import os
@@ -27,6 +19,7 @@ def send_exact(sock, data):
 
 
 def send_file(sock, rel_path: str, abs_path: str):
+    # Send the destination path before the file bytes.
     """
     Protocol:
       uint32 path_len
