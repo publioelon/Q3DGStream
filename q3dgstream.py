@@ -18,11 +18,13 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parent
+import q3dg_paths as paths
 HEADER = struct.Struct('!5sIBHH')
 RECORD = struct.Struct('!If32s')
 
 
 def parse_qblk(data: bytes) -> tuple[int, int, int, list[tuple[int, float, bytes]]]:
+    # Verify the stage before unpacking any weights.
     """Parse QNP01 header + records; validate lengths, IDs and scales."""
     if len(data) < HEADER.size:
         raise ValueError('truncated QNP01 stage header')
@@ -66,7 +68,7 @@ def doctor() -> None:
         except (ImportError,ModuleNotFoundError,ValueError): ok=False
         print(f'  {module:12} {"available" if ok else "not installed"}')
     for label,path in [('Viewer',ROOT/'main.py'),('NTC renderer',ROOT/'renderer_cuda.py'),
-                       ('Flame Steak scene',Path.home()/'qntc_scenes/flame_steak_official/init_3dgs.ply'),
+                       ('Flame Steak scene',paths.SCENE_DIR/'init_3dgs.ply'),
                        ('Local QUIC receiver',ROOT/'qntc_progressive_live.py')]:
         print(f'  {label:20} {"OK" if path.is_file() else "not found"}: {path}')
     if (ROOT/'main.py').exists():
