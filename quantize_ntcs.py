@@ -121,6 +121,7 @@ def pack_int4_signed(q: torch.Tensor) -> torch.Tensor:
 
 
 def unpack_int4_signed(packed: torch.Tensor, padded_numel: int) -> torch.Tensor:
+    # Recover the signed four-bit values from packed bytes.
     packed = packed.cpu().contiguous().view(-1).to(torch.uint8)
 
     lo = packed & 0x0F
