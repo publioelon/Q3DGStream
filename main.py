@@ -1,10 +1,4 @@
-# Main viewer entry point.
-#
-# This file keeps the original 3DGStream viewer structure, but adds the pieces
-# needed for the QNTC streaming demo: offline loading, TCP live receiving,
-# playback controls, a small demo panel, and fixed-camera support for metrics.
-# Most of the actual rendering work is still done in renderer_cuda.py; this
-# script mainly coordinates UI state, camera state, playback, and the receiver.
+# Dynamic Gaussian viewer, playback controls, and stream reception.
 
 import argparse
 import json
@@ -356,6 +350,7 @@ def window_resize_callback(window, width, height):
 
 
 def autoload_session_if_requested():
+    # Load a scene when playback requests it.
     global g_FVV_path, g_total_frame, g_paused, g_timestep, g_last_frame_time
     global g_renderer
 
