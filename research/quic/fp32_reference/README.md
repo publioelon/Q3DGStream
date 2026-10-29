@@ -1,38 +1,67 @@
-# FP32 original Flame Steak over native QUIC: correctness gate
+# FP32 QUIC reference
 
-**Purpose:** Check if full original FP32 scene (299 NTCs + all 299 additions) can be transferred over the project's existing QUIC file transport and displayed with the verified local rendering configuration. It does **not** use progressive updates, saliency, or compression. This deliberately separates source quality from transport correctness.
+This experiment sends the uncompressed Flame Steak NTC checkpoints and the original Gaussian additions over QUIC. It serves as a transport and rendering reference before introducing INT4 compression or progressive priorities.
 
-**Never overwrite the working renderer or original FP32 scene.** The package does not install viewer patches.
+The default sender buffers the entire sequence before playback. This is intentional: it makes it easier to compare the reconstructed scene with the original FP32 model without introducing transmission deadlines.
 
-## Why the sender orders files this way
+## Setup
 
-The native receiver may initialize its tiny-cuda-nn network when it gets `NTCs/config.json`. If the first NTC checkpoint hasn't arrived, the receiver can fall back to bounds computed from the initial Gaussian cloud, producing incorrect motion. So this sender sends `init_3dgs.ply`, followed by `NTC_000000.pth` and additions, **then** config, only after the configured prebuffer. Additions for frame N are sent before NTC N so the viewer never advances to N without the matching additions. With default prebuffer=299, the viewer starts only after all 299 updates are committed, maximizing fidelity validation, not real-time speed.
+Use an Ubuntu machine with the locally integrated QUIC viewer and the reference scene. The receiver requires the fixed-camera file and a local TLS certificate/key at `/tmp/qntc_progressive.crt` and `/tmp/qntc_progressive.key`.
 
-## Commands
+If the local test certificate is missing, create one:
 
-Unzip into `~/snap/firefox/common`, then `cd ~/snap/firefox/common/QNTC_FP32_Reference_QUIC_V1`.
+```bash
+openssl req -x509 -newkey rsa:2048 -nodes -days 7 \
+  -subj '/CN=localhost' \
+  -keyout /tmp/qntc_progressive.key \
+  -out /tmp/qntc_progressive.crt
+```
 
-1. `source ~/venvs/qntcstream/bin/activate`
-2. `python test_package.py`
-3. `bash run_sender.sh --preflight-only` (read-only, no QUIC traffic; checks source and cache filesystem free space)
-4. If certificate missing/expired: `openssl req -x509 -newkey rsa:2048 -nodes -days 7 -subj '/CN=localhost' -keyout /tmp/qntc_progressive.key -out /tmp/qntc_progressive.crt`
-5. Terminal 1: `bash run_receiver.sh` (WARNING: clears only `/tmp/qntc_fp32_reference_cache`)
-6. Terminal 2: `bash run_sender.sh` (full 299 FP32 NTCs and additions, buffered before playback)
-7. Verify samples: `python verify_reference_cache.py --sample 12` (defaults `/tmp/qntc_fp32_reference_cache`; run from package dir)
-8. When ready, verify all: `python verify_reference_cache.py`
+Run the source checks and the sender preflight:
 
-The sender may transfer multiple GiB. No output is written under `/data` unless you explicitly select a cache there; `/data` was nearly full last time. It refuses to send when available cache disk space is insufficient. If needed, point to a filesystem with enough free storage: set `QNTC_FP32_CACHE=/path/to/dedicated_cache` in **both** terminals and use `--cache /path/to/dedicated_cache` for preflight/verify.
+```bash
+source ~/venvs/qntcstream/bin/activate
+cd ~/Q3DGStream/research/quic/fp32_reference
 
-To reduce initial resource/time costs, use `bash run_sender.sh --frames 30 --prebuffer 30`; the viewer can only display the first 31 frames. Restart the receiver (clears cache) before the full test.
+python test_package.py
+bash run_sender.sh --preflight-only
+```
 
-Once full transfer and fidelity are verified, streaming with prebuffer e.g. `--prebuffer 45` is a different stress test: receiver starts earlier but playback may pause if network throughput is insufficient. There is no artificial per-stage delay here.
+The preflight validates required files and available storage without transferring the scene. A full FP32 sequence may require several GiB in the receiver cache.
 
-## What to look for
+## Transfer the scene
 
-- Native QUIC receiver selected because `QNTC_PROGRESSIVE_QUIC` is **unset**.
-- Exact original NTC bounds printed: `[-20, -15, 5]` to `[15, 10, 23]` in earlier reference.
-- 299 NTCs and 299 additions transmitted; native loader returns original trained FP32 weights.
-- Same fixed camera, original SH coefficients, scale 1.0, rotation current, additions, no drift.
-- If files verify but image differs, the issue is in live lazy loading / viewer state rather than QUIC file corruption or compression.
+Run the receiver and sender in separate terminals:
 
-**Caveat:** Source `live_tcp.py` loader supports holding the previous NTC as a fallback, and GPU parsing of additions may affect rendering smoothness; this buffered correctness gate does not prove 30 FPS real-time streaming or dynamic-priority benefits. Do not claim it does.
+```bash
+# Terminal 1
+cd ~/Q3DGStream/research/quic/fp32_reference
+bash run_receiver.sh
+```
+
+```bash
+# Terminal 2
+cd ~/Q3DGStream/research/quic/fp32_reference
+bash run_sender.sh
+```
+
+The sender places the initial Gaussian scene and first NTC checkpoint before the configuration file. This preserves the trained coordinate bounds when the receiver initializes its network. It also sends each additions file before the corresponding NTC step.
+
+The receiver uses the dedicated `/tmp/qntc_fp32_reference_cache` and clears that cache when started. It does not clear the compressed-priority cache.
+
+Verify a sample of the received files, then the complete cache:
+
+```bash
+python verify_reference_cache.py --sample 12
+python verify_reference_cache.py
+```
+
+For a smaller smoke test, the sender supports `--frames 30 --prebuffer 30`. Restart the receiver before beginning the full transfer.
+
+## Comparing results
+
+The reference playback uses the original Gaussian colors, translation scale 1.0, and rotation mode `current`. The earlier measured scene bounds were `[-20, -15, 5]` to `[15, 10, 23]`.
+
+If the file hashes match but the rendered scene differs from the source, the investigation should move to viewer state, model loading, or additions handling rather than network corruption.
+
+This experiment checks FP32 transfer fidelity; it does not use compression or saliency-based weight ordering. Lower prebuffer settings are useful for a subsequent transmission timing experiment.
