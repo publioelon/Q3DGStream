@@ -41,7 +41,7 @@ This is **application-level ordering over QUIC**. Native QUIC stream scheduling 
 | --- | --- |
 | `main.py`, `renderer_cuda.py`, `NTC.py` | Dynamic Gaussian viewer and NTC inference |
 | `research/priority/dynamic_299/` | Saliency prediction, block ranking, and stage generation |
-| `research/priority/hashgrid_ntc114/` | Block- and weight-level HashGrid dependencies, CUDA verification, and motion ablations |
+| `research/priority/hashgrid_ntc114/` | Mapping HashGrid parameter blocks to affected Gaussians |
 | `research/quic/` | FP32 baseline, progressive QUIC experiments, and priority sender |
 | `research/evaluation/` | Integrity checks and partial-reconstruction measurements |
 | `scripts/`, `tests/` | Setup, GPU validation, and automated source tests |
