@@ -12,6 +12,11 @@ import json
 import ssl
 import tempfile
 from pathlib import Path
+
+# Shared locations keep experiments independent of the author's machine.
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import q3dg_paths as paths
 import time
 import torch
 import numpy as np
@@ -21,11 +26,12 @@ from quic_transport import ALPN, send_file
 from qntc_progressive_wire import (HASH, TOTAL, extract_records_from_torch,
                                    encode_stage)
 
-DEFAULT_BASE = Path('/data/3dgs_storage/QNTC-Stream-PQAT-Chunks/qoe_eval/lowbit299_v11_20261011T014600_039285Z/cases/int4_keep05/pqat')
-DEFAULT_AUDIT = Path.home()/'snap/firefox/common/NTC_tile_block_dependencies_114.json'
-DEFAULT_TIMELINE = Path.home()/'snap/firefox/common/NTC_dynamic_saliency_timeline.json'
+DEFAULT_BASE = paths.EXPERIMENT_DIR
+DEFAULT_AUDIT = paths.TILE_SUPPORT_FILE
+DEFAULT_TIMELINE = paths.TIMELINE_FILE
 
 
+    # Reuse the saved saliency timeline for each frame.
 def get_weights(timeline_path, frame, n=32):
     if not timeline_path.is_file():
         raise FileNotFoundError('Dynamic 3D SalFoM timeline missing: '+str(timeline_path)+'; run prepare_dynamic_saliency.py')
