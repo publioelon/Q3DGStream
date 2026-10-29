@@ -42,6 +42,7 @@ class LiveQUICState(FileLiveQUICState):
         print('[REAL QUIC] using exact source xyz bounds',flush=True)
 
     def process_new_files(self, renderer, camera):
+        # Update the current NTC when another stage arrives.
         # Original file receiver still handles PLY/config and status panel.
         super().process_new_files(renderer,camera)
         renderer.qntc_live_priority_state=self
