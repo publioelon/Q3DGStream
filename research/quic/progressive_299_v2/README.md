@@ -1,124 +1,68 @@
-# QNTC real QUIC progressive receiver: 299-frame repair (v2)
+# Bounded progressive QUIC receiver (v2)
 
-This fixes the short repeated 20-frame experiment, stale/evicted CPU NTC states,
-and heavy whole-network CPU reconstruction on the UI thread. It does **not**
-change the current Gaussian colors, alter INT4 source checkpoints, retrain models,
-or change the existing CUDA renderer or `main.py`.
+The second progressive receiver experiment addresses memory use and stage updates over the complete 299-NTC sequence. Rather than rebuilding every dense NTC on the viewer thread, it decodes the current and nearby stages in a CPU worker.
 
-## Mechanism
+The receiver keeps at most 10 dense NTC states in its CPU cache. Incoming `.qblk` stages are stored compactly, and sparse INT4 decoding is vectorized. A new stage becomes visible only after its CPU parameter buffer has been prepared. The viewer continues to perform CUDA inference and drawing on its existing rendering thread.
 
-- Retains the reliable, actual QUIC file-stream transport from the existing pilot.
-- Sends NTC indices **0 through 298**, as four real staged QUIC transmissions.
-- Receives compact `.qblk` chunks on disk (around 19 MiB for the full 299-update
-  sequence). The CPU worker decodes only the current/nearby NTC states, retaining
-  at most 10 dense CPU states, rather than ~2.4 GiB for all 299 dense states.
-- Vectorized sparse INT4 unpacking avoids ~1556 Python record loops per decode.
-- Publishes a new NTC stage version only *after* CPU preparation finishes.
-- The installed renderer's existing progressive-redraw hook then re-applies
-  newer stages to the same visible NTC step. The previous NTC is required to
-  finish before proceeding to the next one; no missing frames are substituted.
-- The frame renderer remains on its existing main/CUDA thread. CUDA inference
-  and GPU parameter uploads are still synchronous and may limit actual FPS.
+The code preserves the original Gaussian attributes and colors.
 
-## Installation (close viewer and sender first)
+## Integrating the receiver
 
-Download `QNTC_Progressive_299_Fix.zip` to `~/snap/firefox/common`.
+Use the integrated Q3DGStream viewer with its progressive hooks in `main.py` and `renderer_cuda.py`. The installer checks those hooks and replaces only the two experimental sidecars.
+
+With the viewer and sender stopped:
 
 ```bash
-cd ~/snap/firefox/common
-unzip -o QNTC_Progressive_299_Fix.zip
 source ~/venvs/qntcstream/bin/activate
-cd QNTC_Progressive_299_Fix
+cd ~/Q3DGStream/research/quic/progressive_299_v2
+
 python test_quic_v2.py
 python test_receiver_state_machine_v2.py
 python install_bounded_progressive_v2.py --viewer ~/Q3DGStream
-# only if [DRY RUN OK]:
+```
+
+Inspect the dry-run output before applying the update:
+
+```bash
 python install_bounded_progressive_v2.py --viewer ~/Q3DGStream --apply
 ```
 
-The installer first verifies that the prior pilot's `main.py` and
-`renderer_cuda.py` hooks exist. It changes ONLY `qntc_progressive_live.py`
-and `qntc_progressive_send.py`, with per-file backups named
-`.before_bounded_progressive_v2`.
+The installer creates backups ending in `.before_bounded_progressive_v2` and does not change the original scene or NTC checkpoints. If the local viewer already uses the same v2 files, no replacement is needed.
 
-## Run in two terminals
+## Playback
 
-Terminal 1 (viewer), leave open:
+A local TLS certificate and key must exist at `/tmp/qntc_progressive.crt` and `/tmp/qntc_progressive.key`. Start the receiver and sender in separate terminals from this directory:
 
 ```bash
-cd ~/snap/firefox/common/QNTC_Progressive_299_Fix
 bash run_receiver.sh
 ```
 
-If local QUIC certificate expired or missing, recreate once:
-
 ```bash
-openssl req -x509 -newkey rsa:2048 -nodes -days 7 \
-  -subj '/CN=localhost' \
-  -keyout /tmp/qntc_progressive.key \
-  -out /tmp/qntc_progressive.crt
-```
-
-Terminal 2 (sender), once `[QUIC] listening ...` appears in Terminal 1:
-
-```bash
-cd ~/snap/firefox/common/QNTC_Progressive_299_Fix
 bash run_sender.sh
 ```
 
-The receiver disables colored overlays and looping. Its playback target is
-30 display FPS, but actual FPS depends on GPU inference and drawing workload.
+The default sender delay is 45 ms after each priority stage. Four pauses per NTC limit the rate of complete animation updates to approximately 5.5 per second, before transfer and decoding costs. This delay is useful for inspecting intermediate states, not for measuring a 30-update-per-second streaming rate.
 
-### Stage spacing is for visual inspection, not a 30 NTC/s benchmark
-
-Default delay: `0.045` seconds after each of four priority chunks, allowing
-several normal-looking render frames to show intermediate NTC states. This
-intentionally means **about 5.5 NTC motion updates/s**, even if the window
-continues rendering at 30 FPS. For faster full animation:
+For a faster transfer:
 
 ```bash
 QNTC_STAGE_DELAY=0.008 bash run_sender.sh
 ```
 
-At very short stage spacing, chunks may all arrive before the next displayed
-frame; the viewer will then show full NTCs and little visible progression.
+At short intervals, several stages may arrive between rendered frames, making intermediate reconstruction less visible.
 
-### Logs
+Logs are written to `/tmp/qntc_receiver_v2.log` and `/tmp/qntc_sender_v2.log`. The receiver reports completed CPU stage decodes using messages such as `[QUIC CPU READY] NTC=... stages=1/4`.
 
-```bash
-grep -E 'QUIC CPU READY|REAL QUIC ERROR|draw error' /tmp/qntc_receiver_v2.log | tail -45
-tail -20 /tmp/qntc_sender_v2.log
-```
+## Interpretation
 
-*Receiver* logs `[QUIC CPU READY] NTC=... stages=1/4 ... 4/4` for processed
-updates. Full 299 updates cover approximately 10 seconds of source animation at
-30 NTC updates/s, but the staged demonstration deliberately plays motion
-more slowly. Do **not** set `LOOP_PLAYBACK=1` for this experiment.
+The v2 sender uses the saved binary HashGrid dependency map for NTC 114 together with an interpolated SalFoM timeline. Its ordering is not the full per-frame gradient-based ranking from `research/priority/dynamic_299/`.
 
-## Accuracy limits
+The four stages are ordered groups of weight records, not independently decodable geometric regions. The code was checked against synthetic CPU stages and the previous receiver hooks. Live CUDA playback must be checked separately before treating this historical experiment as a performance result.
 
-- This is real QUIC application-ordered delivery, but not transport-internal
-  QUIC stream-priority control or a congestion-controlled real 5G experiment.
-- The sender uses NTC114 **binary** HashGrid support plus interpolated 3D SalFoM
-  priority weights. Unknown parameter blocks rank last. It does **not**
-  reproduce the earlier exact weighted-Jacobian ordering or 81% P0 RMSE result.
-- Shared decoder parameters are included in P0 if present in each NTC. Some
-  sparse frames have none; we do not invent or repair missing MLP blocks.
-- Stage P0..P3 are successive delivery quartiles, **not** independent
-  geometric tiles or validated multi-camera-overlap priority classes.
-- This code was tested with local CPU-only synthetic stages and against the
-  prior viewer-source hooks, not actual RTX4060 CUDA playback.
-- If motion remains small even after the full NTC, compare offline full INT4
-  playback to isolate source quantization and renderer translation scaling.
-
-## Undo
-
-Close viewer and sender, then:
+To restore the previous sidecar versions, stop the processes and run:
 
 ```bash
-cd ~/snap/firefox/common/QNTC_Progressive_299_Fix
 python install_bounded_progressive_v2.py --viewer ~/Q3DGStream --restore --apply
 ```
 
-This restores only the experimental sidecars, preserving your prior main/renderer
-backup files and the original scene.
+This restores only the two sidecars.
