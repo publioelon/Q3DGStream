@@ -1,9 +1,4 @@
-# Basic Gaussian PLY loading utilities.
-#
-# The viewer expects the initial 3DGS scene as a PLY file containing position,
-# rotation, scale, opacity, and spherical-harmonic coefficients. This module
-# converts the PLY data into the small GaussianData structure used by the
-# OpenGL and CUDA renderers.
+# Gaussian PLY loading and attribute conversion.
 
 import numpy as np
 from plyfile import PlyData
@@ -67,6 +62,7 @@ def naive_gaussian():
 
 
 def load_ply(path):
+    # Read positions, rotations, scales, and SH coefficients.
     max_sh_degree = 1
     plydata = PlyData.read(path)
     xyz = np.stack((np.asarray(plydata.elements[0]["x"]),
