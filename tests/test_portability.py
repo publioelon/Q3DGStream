@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib
 import os
+import re
 from pathlib import Path
 import subprocess
 import unittest
@@ -40,7 +41,7 @@ class PortabilityTests(unittest.TestCase):
 
     def test_no_workstation_specific_paths(self):
         # Historical absolute mount paths should never be committed.
-        forbidden = ["/home/" + "mininet-ovs", "snap/firefox/" + "common",
+        forbidden = ["snap/firefox/" + "common",
                      "/data/" + "3dgs_storage", "3DGS-" + "QuaNTiC-Demo"]
         sources = list(ROOT.rglob("*.py")) + list(ROOT.rglob("*.sh"))
         sources += list(ROOT.rglob("*.md")) + list(ROOT.rglob("*.txt"))
@@ -51,6 +52,8 @@ class PortabilityTests(unittest.TestCase):
             for token in forbidden:
                 with self.subTest(path=str(source.relative_to(ROOT)), token=token):
                     self.assertNotIn(token, text)
+            # Catch absolute paths into a particular user's home directory.
+            self.assertIsNone(re.search(r"/home/[^/\\s]+/(?:snap|venvs|qntc_scenes|3DGS-)", text))
 
 
 if __name__ == "__main__":
