@@ -1,9 +1,4 @@
-# Lightweight OpenGL renderer.
-#
-# The CUDA renderer is the main path for dynamic NTC playback, but the viewer
-# still creates this renderer during startup and uses it as a fallback/static
-# path. Keep this file simple: it loads Gaussian data into OpenGL buffers, sorts
-# the Gaussians from the camera view, and draws the splats with the GLSL shaders.
+# OpenGL fallback for rendering Gaussian splats.
 
 from OpenGL import GL as gl
 import util
@@ -145,6 +140,7 @@ class OpenGLRenderer(GaussianRenderBase):
         util.set_uniform_1int(self.program, gaus.sh_dim, "sh_dim")
 
     def sort_and_update(self, camera: util.Camera):
+        # Order splats by depth before drawing.
         index = _sort_gaussian(self.gaussians, camera.get_view_matrix())
         self.index_bufferid = util.set_storage_buffer_data(self.program, "gi", index, 
                                                            bind_idx=1,
