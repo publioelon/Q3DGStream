@@ -19,7 +19,6 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 # Resolve external datasets from one shared configuration.
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import q3dg_paths as paths
 
