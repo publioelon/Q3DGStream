@@ -17,7 +17,8 @@ import sys
 import tempfile
 
 REQUIRED = ("main.py", "renderer_cuda.py", "live_quic.py",
-            "quic_transport.py", "qntc_progressive_live.py")
+            "quic_transport.py", "qntc_progressive_live.py",
+            "qntc_progressive_wire.py")
 OPTIONAL = ("qntc_progressive_send.py", "camera_flame_steak.json")
 SOURCE_MARKERS = {
     "main.py": ("quic_listen",),
