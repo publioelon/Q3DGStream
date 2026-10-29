@@ -4,15 +4,20 @@ Read-only inputs; compares complete INT4 NTC with partial saliency/random blocks
 """
 import argparse,csv,json,struct,sys,time
 from pathlib import Path
+
+# Resolve external datasets from one shared configuration.
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import q3dg_paths as paths
 import numpy as np
 import torch
 
 H=struct.Struct('!5sIBHH'); R=struct.Struct('!If32s')
-BASE=Path.home()/'snap/firefox/common'
-CASE=Path('/data/3dgs_storage/QNTC-Stream-PQAT-Chunks/qoe_eval/lowbit299_v11_20261011T014600_039285Z/cases/int4_keep05/pqat')
-PRIO=BASE/'QNTC_dynamic_299_priorities_v1'
-STATES=BASE/'QNTC_299_student_states'
-SCENE=Path.home()/'qntc_scenes/flame_steak_official'
+BASE=paths.DATA_DIR
+CASE=paths.EXPERIMENT_DIR
+PRIO=paths.PRIORITIES_DIR
+STATES=paths.STATES_DIR
+SCENE=paths.SCENE_DIR
 VIEWER=Path(__file__).resolve().parents[2]
 
 
@@ -68,6 +73,7 @@ def balanced_tiles(xyz,n=32):
 
 
 def infer(model,x,batch):
+    # Evaluate in batches to keep GPU memory bounded.
     ys=[]
     with torch.no_grad():
         for i in range(0,len(x),batch):
@@ -102,7 +108,7 @@ def main():
     ap.add_argument('--verify-only',action='store_true')
     ap.add_argument('--start',type=int,default=0);ap.add_argument('--end',type=int,default=298)
     ap.add_argument('--seeds',type=int,default=5);ap.add_argument('--batch',type=int,default=8192)
-    ap.add_argument('--out',type=Path,default=BASE/'QNTC_299_saliency_vs_random_v1')
+    ap.add_argument('--out',type=Path,default=paths.OUTPUT_DIR/'saliency_vs_random')
     a=ap.parse_args()
     if not 0<=a.start<=a.end<=298 or a.seeds<1 or a.batch%128:ap.error('Invalid range/seeds/batch')
     a.out.mkdir(parents=True,exist_ok=True)
