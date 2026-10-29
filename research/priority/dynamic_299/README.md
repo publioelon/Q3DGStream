@@ -17,8 +17,8 @@ Priority is assigned to spatial groups first: two highest-ranked groups belong t
 Activate the installed CUDA environment, then use the scripts in this directory:
 
 ```bash
-source ~/venvs/qntcstream/bin/activate
-cd ~/Q3DGStream/research/priority/dynamic_299
+source scripts/env.sh
+cd research/priority/dynamic_299
 
 bash run_pilot.sh
 bash run_small_sequence.sh
@@ -34,7 +34,7 @@ python rank_ntc_frames.py --start 110 --end 118 --emit-stages
 python check_schedule.py --start 110 --end 118 --stages
 ```
 
-The default output directory is `~/snap/firefox/common/QNTC_dynamic_299_priorities_v1/`:
+The default output directory is `$Q3DGSTREAM_PRIORITIES_DIR/`:
 
 - `orders/NTC_XXXXXX.npz` contains the block ranking and spatial group priorities.
 - `stages/NTC_XXXXXX_P0.qblk` through `P3.qblk` contain the original indexed 40-byte INT4 records.
