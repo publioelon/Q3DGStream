@@ -2,6 +2,11 @@
 """Verify produced ordering/stages include source sparse records without mutations."""
 import argparse
 from pathlib import Path
+
+# Load project-wide paths instead of machine-specific defaults.
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import q3dg_paths as paths
 import sys
 import numpy as np
 
@@ -10,8 +15,9 @@ from qntc_progressive_wire import extract_records_from_torch,decode_stage
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--out',type=Path,default=Path.home()/'snap/firefox/common/QNTC_dynamic_299_priorities_v1')
-    p.add_argument('--wire',type=Path,default=Path('/data/3dgs_storage/QNTC-Stream-PQAT-Chunks/qoe_eval/lowbit299_v11_20261011T014600_039285Z/cases/int4_keep05/pqat/wire'))
+    # Compare packed records against the original compressed checkpoint.
+    p.add_argument('--out',type=Path,default=paths.PRIORITIES_DIR)
+    p.add_argument('--wire',type=Path,default=paths.WIRE_DIR)
     p.add_argument('--start',type=int,default=114)
     p.add_argument('--end',type=int,default=114)
     p.add_argument('--stages',action='store_true',help='Check four QUIC stage files per NTC')
