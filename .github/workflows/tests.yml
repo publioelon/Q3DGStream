@@ -20,4 +20,4 @@ jobs:
       - name: Run QNP01 demo
         run: python q3dgstream.py demo
       - name: Compile Python sources
-        run: python -m compileall -q research tools q3dgstream.py
+        run: python -m compileall -q q3dgstream.py research scripts tests
