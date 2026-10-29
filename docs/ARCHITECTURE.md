@@ -20,7 +20,7 @@ Saliency identifies regions likely to attract attention in the rendered scene. T
 
 For each NTC, gradient-based probes estimate how strongly retained weight blocks influence selected spatial Gaussian groups. Blocks that matter to high-priority regions move earlier in the transmission order. A frame's retained weights are divided into four stages: P0, P1, P2, and P3.
 
-HashGrid blocks can contribute to many Gaussians. A stage is therefore **a set of neural parameters**, not a visible 3D tile. The structural mapping experiment for NTC 114 examines these block-to-Gaussian relationships in detail.
+HashGrid blocks can contribute to many Gaussians. A stage is therefore **a set of neural parameters**, not a visible 3D tile. The NTC 114 experiments map both blocks and individual retained HashGrid weights to the Gaussians accessing them. The finer map records interpolation coefficients; selected-weight ablations separately measure changes in predicted motion. See [HashGrid analysis](../research/priority/hashgrid_ntc114/README.md).
 
 ## Progressive reconstruction
 
