@@ -2,7 +2,7 @@
 
 The scripts under `research/` use the Flame Steak sequence and a saved INT4 keep05 PQAT run. The scene geometry, NTC checkpoints, saved Gaussian states, SalFoM predictions, and generated stage files are external inputs, not part of the Git repository.
 
-CUDA inference uses PyTorch and tiny-cuda-nn. Start with [Ubuntu installation](linux.md) and [GPU validation](GPU_VALIDATION.md) if the machine has not been prepared.
+CUDA inference uses PyTorch and tiny-cuda-nn. Start with [Ubuntu installation](linux.md) and [GPU validation](GPU_VALIDATION.md) if the machine has not been prepared. From the repository root, activate the environment and load the portable dataset paths with `source scripts/env.sh` before running the commands below.
 
 ## Priority generation
 
