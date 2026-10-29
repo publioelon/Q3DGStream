@@ -1,8 +1,8 @@
-# Installation and quickstart
+# Quickstart
 
-Q3DGStream supports two distinct workflows: a **dependency-free binary format demo** and the **GPU-enabled viewer**.
+The repository can be explored without a GPU. Rendering and NTC inference require the CUDA setup described in [Ubuntu installation](linux.md).
 
-## Step 1: Clone and check the source
+## Clone and run the checks
 
 ```bash
 git clone https://github.com/publioelon/Q3DGStream.git
@@ -12,52 +12,51 @@ python3 q3dgstream.py test
 python3 q3dgstream.py doctor
 ```
 
-`demo` creates and parses an in-memory synthetic `.qblk` stage without requiring model weights or CUDA. The tests validate QNP01 packing and source syntax. `doctor` reports missing optional GPU dependencies and scene data.
+`demo` constructs one synthetic INT4 priority stage and parses it. `test` runs the Python source and format tests. `doctor` checks the local dependencies and looks for the example scene and the QUIC receiver.
 
-## Step 2: Install NVIDIA / CUDA tools
+## Set up the viewer
 
-For Ubuntu with an NVIDIA GPU, follow [Linux setup](linux.md), or run the repository installer:
+On Ubuntu with an NVIDIA GPU, follow [the installation guide](linux.md) to install or activate the `qntcstream` environment, compile the CUDA extensions, and obtain the Flame Steak scene.
+
+For an existing environment:
 
 ```bash
-./scripts/setup_linux_venv.sh
 source ~/venvs/qntcstream/bin/activate
-./scripts/download_flame_steak.sh
+cd ~/Q3DGStream
 python3 q3dgstream.py doctor
 ```
 
-The installer builds CUDA extensions, including tiny-cuda-nn and the Gaussian rasterizer. GPU compute capability and installed CUDA/PyTorch versions must match the machine. The scene downloader places `init_3dgs.ply` and 299 NTC checkpoints under `~/qntc_scenes/flame_steak_official/`.
+Run the baseline TCP viewer and sender in **separate terminals**.
 
-## Step 3: Run the existing TCP baseline
-
-Open two terminals with the virtual environment active.
-
-**Terminal A (viewer):**
+**Viewer**
 
 ```bash
+cd ~/Q3DGStream
 python main.py --tcp_listen 5001 --tcp_bind 127.0.0.1 \
-  --tcp_cache /tmp/q3dgstream_tcp --tcp_clear_cache --frames 300 \
-  --video_fps 30 --autoplay
+  --tcp_cache /tmp/q3dgstream_tcp --tcp_clear_cache \
+  --frames 300 --video_fps 30 --autoplay
 ```
 
-**Terminal B (sender):**
+**Sender**
 
 ```bash
+cd ~/Q3DGStream
 python tcp_fvv_sender.py --host 127.0.0.1 --port 5001 \
   --root "$HOME/qntc_scenes/flame_steak_official" \
   --start 0 --end 298 --ntc_stride 1 --no_additions
 ```
 
-This is the existing viewer's TCP baseline, **not** the experimental QUIC priority path. See the [QUIC guide](QUIC.md) for the prototype.
+This exercises the original TCP playback path. It does not transmit the saliency-ranked INT4 stages.
 
-## Step 4: Check a real quantized stage
+## Inspect a real NTC stage
 
-If the stages have already been generated:
+After generating the priority schedules, use the inspector on any `.qblk` file:
 
 ```bash
 python3 q3dgstream.py inspect-stage \
-  ~/snap/firefox/common/QNTC_dynamic_299_priorities_v1/stages/NTC_000114_P0.qblk
+  "$HOME/snap/firefox/common/QNTC_dynamic_299_priorities_v1/stages/NTC_000114_P0.qblk"
 ```
 
-## Step 5: Run the offline research evaluation
+The inspector reports the NTC index, priority stage, and number of weight records. Details of the binary layout are in [Formats](FORMATS.md).
 
-See [Experiments](EXPERIMENTS.md). Stage generation and model inference require the original large datasets, the PQAT checkpoint and tested GPU dependencies. Those data files are not included in Git.
+For the CUDA experiments, see [GPU validation](GPU_VALIDATION.md). For the progressive sender and receiver, see [QUIC streaming](QUIC.md). The original datasets and trained checkpoints are required to reproduce the measurements in [Experiments](EXPERIMENTS.md).
