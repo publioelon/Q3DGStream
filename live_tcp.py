@@ -1,15 +1,4 @@
-# Live TCP receiver used by the QNTC demo.
-#
-# The sender transmits the same layout used by an offline 3DGStream scene:
-# init_3dgs.ply first, then NTCs/config.json, then the NTC_*.pth files.
-# The receiver writes those files into a cache and exposes them to the renderer
-# as if they had already existed on disk. That keeps the live path close to the
-# offline loader and avoids maintaining two separate scene formats.
-#
-# NTCs are loaded lazily. The viewer only loads the checkpoint needed for the
-# frame being rendered, with a small cache and optional prefetching. Sparse
-# update-rate modes are handled by holding the most recent available NTC for
-# intermediate frames.
+# Receive scene data over TCP and cache NTC files for playback.
 
 import os
 import re
@@ -287,6 +276,7 @@ class LiveTCPState:
     # ---------- Receiver (fast I/O) ----------
 
     def start_receiver(self, bind_host: str, port: int, clear_cache: bool):
+        # Receive files without blocking the rendering thread.
         if clear_cache and self.cache_root.exists():
             shutil.rmtree(self.cache_root, ignore_errors=True)
 
