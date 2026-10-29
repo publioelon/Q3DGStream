@@ -3,16 +3,7 @@ Part of the code (CUDA and OpenGL memory transfer) is derived from:
 https://github.com/jbaron34/torchwindow/tree/master
 """
 
-# CUDA renderer for dynamic 3D Gaussian playback.
-#
-# The renderer starts from the initial Gaussian scene and applies the NTC output
-# for the current timestep. In the current stable flame_steak demo, additions are
-# normally disabled and NTC rotations are kept off to avoid the ghosting/shift
-# artifacts observed while debugging additional_3dgs.
-#
-# Most demo failures during development were caused by how the dynamic updates
-# were interpreted, not by TCP itself, so this path intentionally stays
-# conservative.
+# CUDA renderer for dynamic Gaussian motion and rasterization.
 
 import os
 
@@ -543,6 +534,7 @@ class CUDARenderer(GaussianRenderBase):
 
     @torch.no_grad()
     def query_NTC(self, xyz: torch.Tensor, timestep: int):
+        # Predict the current step's Gaussian motion.
         if self.NTCs is None or len(self.NTCs) == 0:
             return
 
