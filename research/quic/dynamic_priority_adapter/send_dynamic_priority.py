@@ -19,7 +19,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import q3dg_paths as paths
 import ssl
 import struct
-import sys
 import tempfile
 import time
 
