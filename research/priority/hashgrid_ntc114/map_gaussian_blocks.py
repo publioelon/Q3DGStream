@@ -12,13 +12,19 @@ import json
 import math
 import sys
 from pathlib import Path
+
+# Load project-wide paths instead of machine-specific defaults.
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import q3dg_paths as paths
 import numpy as np
 
 N_PARAMS = 1_991_680
 HASH_PARAMS = 1_982_464
 BLOCK = 64
 HASH_BLOCKS = HASH_PARAMS // BLOCK
-DEFAULT_BASE = Path('/data/3dgs_storage/QNTC-Stream-PQAT-Chunks/qoe_eval/lowbit299_v11_20261011T014600_039285Z/cases/int4_keep05/pqat')
+DEFAULT_BASE =
+# Map parameter access, not the magnitude of Gaussian motion. paths.EXPERIMENT_DIR
 PRIMES = {
     'coherentprime': (1, 2654435761, 805459861),
     'prime': (1958374283, 2654435761, 805459861),
@@ -163,7 +169,7 @@ def main():
     p.add_argument('--wire', type=Path, default=DEFAULT_BASE / 'wire')
     p.add_argument('--viewer', type=Path, default=Path(__file__).resolve().parents[3])
     p.add_argument('--ntc', type=int, default=114)
-    p.add_argument('--out', type=Path, default=Path.home() / 'snap/firefox/common/QNTC_individual_gaussian_ntc114')
+    p.add_argument('--out', type=Path, default=paths.HASHGRID_DIR)
     p.add_argument('--batch-size', type=int, default=2048)
     p.add_argument('--max-gaussians', type=int, default=0, help='0=all; nonzero for smaller trial only')
     p.add_argument('--cuda-probes', type=int, default=12)
