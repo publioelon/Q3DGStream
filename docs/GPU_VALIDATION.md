@@ -24,7 +24,7 @@ cd ~/Q3DGStream
 python scripts/sync_gpu_viewer.py --source ~/3DGS-QuaNTiC-Demo
 ```
 
-The script reports the five required GPU/QUIC source files and optional sender/camera settings. It only **previews** differences. No model weights, private keys, scene assets or experimental caches are copied.
+The script reports the six required GPU/QUIC source files and optional sender/camera settings. It only **previews** differences. No model weights, private keys, scene assets or experimental caches are copied.
 
 If the preview reports missing `live_quic.py`, `quic_transport.py`, `qntc_progressive_live.py`, QUIC hooks in `main.py`, or priority hooks in `renderer_cuda.py`, **stop and inspect the local checkout**. Do not replace a working file with a guessed version.
 
