@@ -22,7 +22,8 @@ import numpy as np
 from dynamic_priority_core import interpolate_saliency, priority_tiers, rank_retained_blocks, partition_in_four
 from qntc_progressive_wire import extract_records_from_torch, encode_stage, decode_stage, HASH, TOTAL
 
-# Rank each frame independently using its own compressed NTC. paths.EXPERIMENT_DIR
+# Rank each frame independently using its own compressed NTC.
+BASE = paths.EXPERIMENT_DIR
 DEFAULT_TIMELINE = paths.TIMELINE_FILE
 DEFAULT_OUT = paths.PRIORITIES_DIR
 BS=64
