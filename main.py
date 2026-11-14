@@ -270,6 +270,10 @@ def impl_glfw_init():
     glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
     glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
     glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+    # VirtualGL's headless EGL backend supports CUDA texture interop when GLFW
+    # creates an EGL context rather than an emulated GLX context.
+    if os.environ.get("Q3DG_GLFW_CONTEXT_API", "native").lower() == "egl":
+        glfw.window_hint(glfw.CONTEXT_CREATION_API, glfw.EGL_CONTEXT_API)
 
     global window
     window = glfw.create_window(g_camera.w, g_camera.h, window_name, None, None)
@@ -955,8 +959,28 @@ def main():
 
     live = None
     live_autoplay_started = False
+    experiment = None
+    if args.priority_experiment:
+        from collections import deque
+        from pathlib import Path
+        from research.quic.priority_transport.live_playback import LivePlayback, write_snapshot
 
-    if args.tcp_listen is not None:
+        experiment_dir = Path(args.priority_experiment)
+        experiment = LivePlayback(args.frames - 1, VIDEO_FPS, args.priority_prebuffer)
+        samples = deque()
+        next_feedback = 0.0
+        transfer_started = None
+        if g_renderer_idx != BACKEND_CUDA:
+            raise RuntimeError("live playback experiment requires the CUDA renderer")
+
+    if args.priority_listen is not None:
+        from live_priority import LivePriorityState
+        g_FVV_path = args.priority_cache
+        g_total_frame = args.frames if args.frames > 0 else 300
+        live = LivePriorityState(cache_root=args.priority_cache, total_frames_hint=g_total_frame, autoplay=args.autoplay)
+        live.start_receiver('127.0.0.1', args.priority_listen,
+                            cert=args.priority_cert, key=args.priority_key)
+    elif args.tcp_listen is not None:
         g_FVV_path = args.tcp_cache
         g_total_frame = args.frames if args.frames > 0 else 300
         live = LiveTCPState(cache_root=args.tcp_cache, total_frames_hint=g_total_frame, autoplay=args.autoplay)
@@ -984,7 +1008,7 @@ def main():
 
         if live is not None:
             live.process_new_files(g_renderer, g_camera)
-            if live.autoplay and (not live_autoplay_started):
+            if experiment is None and live.autoplay and (not live_autoplay_started):
                 if live.init_ply_ok and live.config_ok and live.max_play >= 0:
                     g_paused = False
                     g_timestep = 0
@@ -997,7 +1021,32 @@ def main():
             max_play = live.max_play
 
         current_time = time.time()
-        if (current_time - g_last_frame_time) >= VIDEO_INTERVAL and not g_paused:
+        if experiment is not None:
+            now = time.monotonic()
+            start_file = experiment_dir / "transfer-start.json"
+            if transfer_started is None and start_file.is_file():
+                transfer_started = json.loads(start_file.read_text())["at"]
+            if live.err:
+                raise RuntimeError(live.err)
+            selected = experiment.select(now, live.init_ply_ok and live.config_ok, max_play)
+            if selected is not None:
+                g_timestep = selected
+            if now >= next_feedback:
+                with live._lock:
+                    committed = live.total_bytes
+                samples.append((now, committed))
+                while len(samples) > 2 and samples[1][0] <= now - 2:
+                    samples.popleft()
+                elapsed = now - samples[0][0]
+                rate = (committed - samples[0][1]) / elapsed if elapsed > 0 else 0
+                write_snapshot(experiment_dir / "feedback.json", dict(
+                    at=now, port=live.bound_port if hasattr(live, "bound_port") else None,
+                    buffer_seconds=max(0, max_play - (experiment.frame or 0)) / VIDEO_FPS,
+                    committed_Bps=rate, frame=experiment.frame, ready=max_play,
+                    stalled=experiment.stall_start is not None,
+                ))
+                next_feedback = now + 0.1
+        elif (current_time - g_last_frame_time) >= VIDEO_INTERVAL and not g_paused:
             loop_playback = os.environ.get("LOOP_PLAYBACK", "0").strip() == "1"
 
             if g_timestep < max_play:
@@ -1024,8 +1073,11 @@ def main():
         apply_opacity_masks_for_current_frame()
 
         try:
-            g_renderer.draw(g_timestep)
+            if experiment is None or selected is not None:
+                g_renderer.draw(g_timestep)
         except Exception as e:
+            if experiment is not None:
+                raise
             if live is not None:
                 with live._lock:
                     live.err = f"draw error: {repr(e)}"
@@ -1076,7 +1128,7 @@ def main():
                 if live is not None:
                     snap = live.ui_snapshot()
                     imgui.separator()
-                    imgui.text("TCP LIVE:")
+                    imgui.text("QUIC PRIORITY LIVE:" if args.priority_listen is not None else "TCP LIVE:")
                     imgui.text(f" cache: {snap['cache']}")
                     imgui.text(f" status: {snap['status']} ({snap['connected']})")
                     if snap["err"]:
@@ -1089,7 +1141,7 @@ def main():
                     imgui.text(f" files: {snap['files']} ({snap['gb']:.2f} GB)")
 
                     imgui.separator()
-                    imgui.text("TCP Stream Monitor:")
+                    imgui.text("QUIC File Monitor:" if args.priority_listen is not None else "TCP Stream Monitor:")
 
                     imgui.text(
                         f" rx goodput avg/inst: "
@@ -1365,6 +1417,26 @@ def main():
         imgui.render()
         impl.render(imgui.get_draw_data())
         glfw.swap_buffers(window)
+        if experiment is not None:
+            now = time.monotonic()
+            if live.err:
+                raise RuntimeError(live.err)
+            if selected is not None and g_renderer.current_timestep != selected:
+                raise RuntimeError("renderer did not advance to the selected frame")
+            experiment.present(now, selected)
+            if transfer_started is not None and (
+                (experiment.finished and (experiment_dir / "transfer-done.json").exists())
+                or now - transfer_started >= args.priority_experiment_timeout
+            ):
+                report = experiment.report(transfer_started, now)
+                with live._lock:
+                    report["exact_ntc_uses"] = live.exact_ntc_uses
+                    report["missing_ntc_uses"] = live.missing_ntc_uses
+                if experiment.finished and report["exact_ntc_uses"] != experiment.updates:
+                    raise RuntimeError("presented frame count differs from exact NTC applications")
+                write_snapshot(experiment_dir / "playback.json", report)
+                break
+            glfw.wait_events_timeout(min(0.01, VIDEO_INTERVAL / 4))
 
     if live is not None:
         live.request_stop()
@@ -1381,6 +1453,14 @@ if __name__ == "__main__":
     parser.add_argument("--tcp_bind", default="127.0.0.1")
     parser.add_argument("--tcp_cache", default=r"C:\tmp\gs_stream_cache\live_session")
     parser.add_argument("--tcp_clear_cache", action="store_true")
+    parser.add_argument("--priority_listen", type=int, default=None,
+                        help="receive bounded-priority QUIC files directly into this player")
+    parser.add_argument("--priority_cache", default="data/cache/priority-player")
+    parser.add_argument("--priority_experiment", help="directory for native playback experiment telemetry")
+    parser.add_argument("--priority_prebuffer", type=float, default=1.0)
+    parser.add_argument("--priority_experiment_timeout", type=float, default=240.0)
+    parser.add_argument("--priority_cert")
+    parser.add_argument("--priority_key")
     parser.add_argument("--frames", type=int, default=0)
     parser.add_argument("--autoplay", action="store_true")
     parser.add_argument("--autoload_fvv", default="")
@@ -1396,4 +1476,15 @@ if __name__ == "__main__":
         help="If >1 and base_black_counts.npy exists, use counts >= this threshold for global fallback",
     )
     args = parser.parse_args()
+    if args.priority_listen is not None:
+        if args.tcp_listen is not None:
+            parser.error("choose either TCP or priority QUIC reception")
+        if not (0 if args.priority_experiment else 1) <= args.priority_listen <= 65535 or not args.priority_cert or not args.priority_key:
+            parser.error("priority QUIC requires a valid port, --priority_cert and --priority_key")
+    if args.priority_experiment and (
+        args.priority_listen is None or args.frames < 2
+        or not math.isfinite(args.priority_experiment_timeout)
+        or args.priority_experiment_timeout <= 0
+    ):
+        parser.error("priority experiment requires QUIC, at least two frames, and a positive timeout")
     main()
