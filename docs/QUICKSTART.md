@@ -65,3 +65,7 @@ python3 q3dgstream.py inspect-stage \
 ```
 
 The inspector prints the frame number, priority, and block count. Details are in [Formats](FORMATS.md). For the GPU reconstruction measurements and live QUIC experiments, follow [GPU validation](GPU_VALIDATION.md).
+
+## Prioritized QUIC reception
+
+The original viewer accepts live QUIC with `--priority_listen`. See [server reproduction steps](QUIC_REPRODUCE.md) and the [review guide](QUIC_REVIEW.md).

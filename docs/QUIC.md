@@ -57,3 +57,7 @@ The `QNTC_STAGE_DELAY` setting introduces a pause after each stage for inspectin
 The measured local QUIC experiment confirms delivery of 30 updates, 120 priority stages, and 30 additions files. It uses **application-level stage ordering**, not QUIC's internal stream-priority mechanism. Claims about adaptive bandwidth control, end-to-end 30-update-per-second playback, or saliency-weighted rendered QoE require the corresponding network and GPU measurements.
 
 See [Results](RESULTS.md) for completed tests and [Experiments](EXPERIMENTS.md) for reconstruction evaluation.
+
+## Bounded QUIC delivery and native player
+
+See the [review guide](QUIC_REVIEW.md) for the implementation, measured results and limits, and [reproduction steps](QUIC_REPRODUCE.md) for server commands.
