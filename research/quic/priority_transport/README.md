@@ -1,3 +1,7 @@
+Paired INT2/INT4 adaptation: [implementation and server commands](ADAPTIVE.md).
+
+Latest: [completed compressed-NTC GPU evaluation](evidence/reproduction-20261124/README.md).
+
 # Quinn NTC transport tests
 
 This experiment checks whether the order in which we write P0–P3 to Quinn
@@ -93,3 +97,5 @@ individually.
 The slow-motion preview is for observing arrival and refinement. The 30 FPS
 command targets live playback; whether it sustains 30 distinct NTC updates
 must be checked using the observed rate, not the requested `--fps` value.
+
+Latest GPU-server [transport controls and pending quality inputs](evidence/quinn-20261122/SUMMARY.md).
